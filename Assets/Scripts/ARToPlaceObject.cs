@@ -6,6 +6,8 @@ using UnityEngine.Experimental.XR;
 using System;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.UIElements;
+using Button = UnityEngine.UI.Button;
 
 public class ARToPlaceObject : MonoBehaviour
 {
@@ -30,6 +32,25 @@ public class ARToPlaceObject : MonoBehaviour
     public bool bRotation=false;
 
     private Quaternion yRotation;
+
+    private GameObject selectedObject1;
+    private GameObject selectedObject2;
+    private List<Line> lines = new List<Line>();
+
+    public void SpawnObject(GameObject objectToSpawn,Vector3 pose,Quaternion A)
+    {
+        if (objectToSpawn!=null)
+        {
+            // Получаем Transform компонент объекта ToPlace
+            Transform toPlaceTransform = placementIndicator.transform;
+            // Создаем новый экземпляр objectToPlace
+            GameObject newObject = Instantiate(objectToSpawn, pose, A);
+            newObject.transform.parent = toPlaceTransform;
+            newObject.tag = "Point";
+        }
+    }
+
+
     private void UpdatePlacementPose()
     {
         if (Camera.main != null) // Добавил 
@@ -82,30 +103,50 @@ public class ARToPlaceObject : MonoBehaviour
         buttons[1].GetComponentInChildren<TextMeshProUGUI>().text = ((bRotation) ? ("Закрепить") : ("Вращать"));
     }
 
+    private void CreateLine(GameObject startObject, GameObject endObject)
+    {
+        GameObject lineObject = new GameObject("Line");
+        Line line = lineObject.AddComponent<Line>();
+        line.startObject = startObject;
+        line.endObject = endObject;
+        line.UpdateLine();
+        lines.Add(line);
+    }
+
+
     void RotateAndMovePlace()
     {
-        buttons[0].onClick.AddListener(TFMovePlace);
-        buttons[1].onClick.AddListener(TFRotationPlace);
-        
         if (placementActive) UpdatePlacementIndicator();
         if (Input.touchCount > 0)
-        {   
+        {
             Touch touch = Input.GetTouch(0);
             TouchPosition = touch.position;
-            //if (touch.phase == TouchPhase.Began)
-            //{
-            //    Ray ray = ARCamera.ScreenPointToRay(touch.position);
-            //    RaycastHit hitObject;
+            if (touch.phase == TouchPhase.Began)
+            {
+                Ray ray = ARCamera.ScreenPointToRay(touch.position);
+                RaycastHit hitObject;
 
-            //    if(Physics.Raycast(ray,out hitObject))
-            //    {
-            //        if (hitObject.collider.CompareTag("UnSelected"))
-            //        {
-            //            hitObject.collider.gameObject.tag = "Selected";
-            //        }
-            //    }
-            //}
-            if(touch.phase == TouchPhase.Moved && Input.touchCount == 1)
+                if (Physics.Raycast(ray, out hitObject))
+                {
+                    if (hitObject.collider.CompareTag("Point"))
+                    {
+                        if (selectedObject1 == null)
+                        {
+                            selectedObject1 = hitObject.collider.gameObject;
+                        }
+                        else if (selectedObject2 == null && selectedObject1 != hitObject.collider.gameObject)
+                        {
+                            selectedObject2 = hitObject.collider.gameObject;
+                            // создание линии между двумя выделенными объектами Point
+                            CreateLine(selectedObject1, selectedObject2);
+                            // сброс выделения
+                            selectedObject1 = null;
+                            selectedObject2 = null;
+                        }
+                    }
+                }
+            }
+            else if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
             {
                 if (bRotation)
                 {
@@ -115,6 +156,40 @@ public class ARToPlaceObject : MonoBehaviour
             }
         }
     }
+
+
+    //void RotateAndMovePlace()
+    //{
+
+
+    //    if (placementActive) UpdatePlacementIndicator();
+    //    if (Input.touchCount > 0)
+    //    {   
+    //        Touch touch = Input.GetTouch(0);
+    //        TouchPosition = touch.position;
+    //        //if (touch.phase == TouchPhase.Began)
+    //        //{
+    //        //    Ray ray = ARCamera.ScreenPointToRay(touch.position);
+    //        //    RaycastHit hitObject;
+
+    //        //    if(Physics.Raycast(ray,out hitObject))
+    //        //    {
+    //        //        if (hitObject.collider.CompareTag("UnSelected"))
+    //        //        {
+    //        //            hitObject.collider.gameObject.tag = "Selected";
+    //        //        }
+    //        //    }
+    //        //}
+    //        if(touch.phase == TouchPhase.Moved && Input.touchCount == 1)
+    //        {
+    //            if (bRotation)
+    //            {
+    //                yRotation = Quaternion.Euler(0f, touch.deltaPosition.x * 0.1f, 0f);
+    //                placementIndicator.transform.rotation *= yRotation;
+    //            }
+    //        }
+    //    }
+    //}
 
     void TFMovePlace()
     {
@@ -129,8 +204,8 @@ public class ARToPlaceObject : MonoBehaviour
     {
         arOrigin = FindObjectOfType<ARSessionOrigin>();
         rayCastManager = arOrigin.GetComponent<ARRaycastManager>();
-        buttons[0].GetComponentInChildren<TextMeshProUGUI>().text = ((placementActive) ? ("Закрепить\nоси") : ("Передвинуть\nоси"));
-        buttons[1].GetComponentInChildren<TextMeshProUGUI>().text = ((bRotation) ? ("Закрепить") : ("Вращать"));
+        buttons[0].onClick.AddListener(TFMovePlace);
+        buttons[1].onClick.AddListener(TFRotationPlace);
     }
 
     // Update is called once per frame

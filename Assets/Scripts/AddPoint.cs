@@ -18,7 +18,10 @@ public class AddPoint : MonoBehaviour
     [SerializeField] private TextMeshProUGUI[] coords;
     [SerializeField] private GameObject spawn;
     [SerializeField] private GameObject objectToSpawn;
+    //[SerializeField] private 
     //InputField InF;
+
+    public List<Line> connectedLines = new List<Line>();
 
     int intparse(char a)
     {
@@ -64,8 +67,6 @@ public class AddPoint : MonoBehaviour
 
     void AddPointToPlace()
     {
-        //button.GetComponentInChildren<TextMeshProUGUI>().text = texts[0].text;
-        //button.GetComponentInChildren<TextMeshProUGUI>().text;
         string sx, sy, sz;
         sx = coords[0].text.ToString();
         sy = coords[1].text.ToString();
@@ -73,16 +74,13 @@ public class AddPoint : MonoBehaviour
         sx = sx.Substring(0, sx.Length - 1);
         sy = sy.Substring(0, sy.Length - 1);
         sz = sz.Substring(0, sz.Length - 1);
-        float x=0;
-        float y=0;
-        float z=0;
+        float x = 0;
+        float y = 0;
+        float z = 0;
         bool bx = (sx.Length > 0 ? float.TryParse(sx, out x) : false);
         bool by = (sy.Length > 0 ? float.TryParse(sy, out y) : false);
         bool bz = (sz.Length > 0 ? float.TryParse(sz, out z) : false);
-        // coords[0].text = "232";
-        //pose.x = x; pose.y = y; pose.z = z;
-        //button.GetComponentInChildren<TextMeshProUGUI>().text = x.ToString();
-        //button.GetComponentInChildren<TextMeshProUGUI>().text = coords[0].text + ";"+ coords[1].text + ";"+ coords[2].text;
+
         if (bx && by && bz)
         {
             button.GetComponentInChildren<TextMeshProUGUI>().text = x.ToString() + ";" + y.ToString() + ";" + z.ToString();
@@ -90,9 +88,11 @@ public class AddPoint : MonoBehaviour
             pose.y = y / 100;
             pose.z = z / 100;
             objectToSpawn.tag = "Point";
-            Instantiate(objectToSpawn, pose, new Quaternion(0, 0, 0, 0));
-            //foreach (var i in coords)
-            //    i.GetComponentInChildren<TextMeshProUGUI>().color = Color.white;
+            ARToPlaceObject arToPlaceObject = FindObjectOfType<ARToPlaceObject>();
+            if (arToPlaceObject != null)
+            {
+                arToPlaceObject.SpawnObject(objectToSpawn,pose,new Quaternion(0f,0f,0f,0f));
+            }
         }
         else
         {
@@ -107,28 +107,18 @@ public class AddPoint : MonoBehaviour
             if (bz) str2 += z.ToString();
             else str2 += st2;
             button.GetComponentInChildren<TextMeshProUGUI>().text = str2;
-
-            //button.GetComponentInChildren<TextMeshProUGUI>().text = "False";
-            //if (!bx) coords[0].GetComponentInChildren<TextMeshProUGUI>().color = Color.red;
-            //else coords[0].GetComponentInChildren<TextMeshProUGUI>().color = Color.white;
-            //if (!by) coords[1].GetComponentInChildren<TextMeshProUGUI>().color = Color.red;
-            //else coords[1].GetComponentInChildren<TextMeshProUGUI>().color = Color.white;
-            //if (!bz) coords[2].GetComponentInChildren<TextMeshProUGUI>().color = Color.red;
-            //else coords[2].GetComponentInChildren<TextMeshProUGUI>().color = Color.white;
         }
+
+        // Удаляем обработчик нажатия на кнопку
+        //button.onClick.RemoveListener(AddPointToPlace);
     }
 
     void Start()
     {
         button = GetComponent<Button>();
-        //for(int i = 0; i < coords.Length; i++)
-        //{
-        //    texts[i] = coords[i].GetComponentInChildren<TextMeshProUGUI>();
-        //}
-
-    }
-    void Update()
-    {
         button.onClick.AddListener(AddPointToPlace);
+    }
+    void Update() 
+    {
     }
 }

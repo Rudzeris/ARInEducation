@@ -11,6 +11,7 @@ TagManager:
   - YCoords
   - ZCoords
   - Add a point
+  - Point
   layers:
   - Default
   - TransparentFX
