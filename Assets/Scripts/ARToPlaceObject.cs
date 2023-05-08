@@ -43,9 +43,20 @@ public class ARToPlaceObject : MonoBehaviour
         {
             // Получаем Transform компонент объекта ToPlace
             Transform toPlaceTransform = placementIndicator.transform;
+            double rotation = -toPlaceTransform.eulerAngles.y;
+            float x = pose.x;
+            float x1 = toPlaceTransform.transform.position.x;
+            float z = pose.z;
+            float z1 = toPlaceTransform.transform.position.z;
+            double r = Math.Sqrt(x * x + z * z);
+            double t = Math.Atan2(x,z);
+            double t2 = t + rotation / 180.0 * Math.PI;
+            double x2 = (double)x1 + r * Math.Cos(t2);
+            double z2 = (double)z1 + r * Math.Sin(t2);
+            pose.x = (float)x2;
+            pose.z = (float)z2;
             // Создаем новый экземпляр objectToPlace
-            GameObject newObject = Instantiate(objectToSpawn, pose, A);
-            newObject.transform.parent = toPlaceTransform;
+            GameObject newObject = Instantiate(objectToSpawn, pose/100, A,toPlaceTransform);
             newObject.tag = "Point";
         }
     }
@@ -116,7 +127,7 @@ public class ARToPlaceObject : MonoBehaviour
 
     void RotateAndMovePlace()
     {
-        if (placementActive) UpdatePlacementIndicator();
+        //if (placementActive) UpdatePlacementIndicator(); // move
         if (Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
@@ -211,7 +222,7 @@ public class ARToPlaceObject : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        UpdatePlacementPose();
+        //UpdatePlacementPose();
         RotateAndMovePlace();
     }
 }

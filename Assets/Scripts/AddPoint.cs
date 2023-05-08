@@ -84,9 +84,9 @@ public class AddPoint : MonoBehaviour
         if (bx && by && bz)
         {
             button.GetComponentInChildren<TextMeshProUGUI>().text = x.ToString() + ";" + y.ToString() + ";" + z.ToString();
-            pose.x = x / 100;
-            pose.y = y / 100;
-            pose.z = z / 100;
+            pose.x = x;
+            pose.y = y;
+            pose.z = z;
             objectToSpawn.tag = "Point";
             ARToPlaceObject arToPlaceObject = FindObjectOfType<ARToPlaceObject>();
             if (arToPlaceObject != null)
