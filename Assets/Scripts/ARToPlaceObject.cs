@@ -62,8 +62,8 @@ public class ARToPlaceObject : MonoBehaviour
             double t2 = t + rotation / 180.0 * Math.PI;
             double x2 = (double)x1 + r * Math.Cos(t2);
             double z2 = (double)z1 + r * Math.Sin(t2);
-            pose.x = (float)x2;
-            pose.z = (float)z2;
+            pose.x = (float)z2;
+            pose.z = (float)x2;
             pose.y += toPlaceTransform.transform.position.y;
             //Vector3 globalPosition = toPlaceTransform.TransformPoint(pose);
             // Создаем новый экземпляр objectToPlace
@@ -138,7 +138,8 @@ public class ARToPlaceObject : MonoBehaviour
         lines.Add(line);
     }
 
-
+    private Color defaultColor=Color.gray;
+    private Color selectColor=Color.red;
     void RotateAndMovePlace()
     {
         if (placementActive) UpdatePlacementIndicator(); // move
@@ -158,13 +159,17 @@ public class ARToPlaceObject : MonoBehaviour
                         if (selectedObject1 == null)
                         {
                             selectedObject1 = hitObject.collider.gameObject;
+                            selectedObject1.GetComponent<Renderer>().material.color = selectColor;
                         }
                         else if (selectedObject2 == null && selectedObject1 != hitObject.collider.gameObject)
                         {
+                            selectedObject2.GetComponent<Renderer>().material.color = selectColor;
                             selectedObject2 = hitObject.collider.gameObject;
                             // создание линии между двумя выделенными объектами Point
                             CreateLine(selectedObject1, selectedObject2);
                             // сброс выделения
+                            selectedObject1.GetComponent<Renderer>().material.color = defaultColor;
+                            selectedObject2.GetComponent<Renderer>().material.color=defaultColor;
                             selectedObject1 = null;
                             selectedObject2 = null;
                         }
