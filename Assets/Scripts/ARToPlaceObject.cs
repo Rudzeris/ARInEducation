@@ -8,6 +8,8 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.UIElements;
 using Button = UnityEngine.UI.Button;
+using UnityEngine.XR.OpenXR.Input;
+using Pose = UnityEngine.Pose;
 
 public class ARToPlaceObject : MonoBehaviour
 {
@@ -19,8 +21,8 @@ public class ARToPlaceObject : MonoBehaviour
     private ARSessionOrigin arOrigin;
     private ARRaycastManager rayCastManager;
     private Pose placementPose;
-    private bool placementPoseIsValid = false;
-    private bool placementActive = true;
+    private bool placementPoseIsValid = true;
+    private bool placementActive = false;
 
     private Vector2 TouchPosition;
 
@@ -29,7 +31,7 @@ public class ARToPlaceObject : MonoBehaviour
     List<ARRaycastHit> hits = new List<ARRaycastHit>();
 
     public Button[] buttons;
-    public bool bRotation=false;
+    //public bool bRotation = false;
 
     private Quaternion yRotation;
 
@@ -37,27 +39,37 @@ public class ARToPlaceObject : MonoBehaviour
     private GameObject selectedObject2;
     private List<Line> lines = new List<Line>();
 
-    public void SpawnObject(GameObject objectToSpawn,Vector3 pose,Quaternion A)
+    [SerializeField] public TextMeshProUGUI TMPro1;
+    [SerializeField] public TextMeshProUGUI TMPro2;
+    [SerializeField] public TextMeshProUGUI TMPro3;
+
+    public void SpawnObject(GameObject objectToSpawn, Vector3 pose, Quaternion A)
     {
-        if (objectToSpawn!=null)
+        if (objectToSpawn != null)
         {
             // Получаем Transform компонент объекта ToPlace
             Transform toPlaceTransform = placementIndicator.transform;
+            pose /= 50;
             double rotation = -toPlaceTransform.eulerAngles.y;
             float x = pose.x;
             float x1 = toPlaceTransform.transform.position.x;
             float z = pose.z;
             float z1 = toPlaceTransform.transform.position.z;
             double r = Math.Sqrt(x * x + z * z);
-            double t = Math.Atan2(x,z);
+            double t = Math.Atan2(x, z);
             double t2 = t + rotation / 180.0 * Math.PI;
             double x2 = (double)x1 + r * Math.Cos(t2);
             double z2 = (double)z1 + r * Math.Sin(t2);
             pose.x = (float)x2;
             pose.z = (float)z2;
+            pose.y += toPlaceTransform.transform.position.y;
+            //Vector3 globalPosition = toPlaceTransform.TransformPoint(pose);
             // Создаем новый экземпляр objectToPlace
-            GameObject newObject = Instantiate(objectToSpawn, pose/100, A,toPlaceTransform);
+            //GameObject newObject = Instantiate(objectToSpawn, pose/50, A,toPlaceTransform);
+            GameObject newObject = Instantiate(objectToSpawn, pose, A, toPlaceTransform);
             newObject.tag = "Point";
+            TMPro1.text = "X: " + pose.x.ToString() + ", Y: " + pose.y.ToString() + ", Z: " + pose.z.ToString();
+            //TMPro1.text = "X: " + globalPosition.x.ToString() + ", Y: " + globalPosition.y.ToString() + ", Z: " + globalPosition.z.ToString();
         }
     }
 
@@ -107,12 +119,12 @@ public class ARToPlaceObject : MonoBehaviour
         //placementIndicator.transform.position = placementPose.position;
     }
 
-    private void TFRotationPlace()
-    {
-        if (bRotation) bRotation = false;
-        else bRotation = true;
-        buttons[1].GetComponentInChildren<TextMeshProUGUI>().text = ((bRotation) ? ("Закрепить") : ("Вращать"));
-    }
+    //private void TFRotationPlace()
+    //{
+    //    if (bRotation) bRotation = false;
+    //    else bRotation = true;
+    //    buttons[1].GetComponentInChildren<TextMeshProUGUI>().text = ((bRotation) ? ("Закрепить") : ("Вращать"));
+    //}
 
     private void CreateLine(GameObject startObject, GameObject endObject)
     {
@@ -127,7 +139,7 @@ public class ARToPlaceObject : MonoBehaviour
 
     void RotateAndMovePlace()
     {
-        //if (placementActive) UpdatePlacementIndicator(); // move
+        if (placementActive) UpdatePlacementIndicator(); // move
         if (Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
@@ -159,7 +171,7 @@ public class ARToPlaceObject : MonoBehaviour
             }
             else if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
             {
-                if (bRotation)
+                if (true)//bRotation)
                 {
                     yRotation = Quaternion.Euler(0f, touch.deltaPosition.x * 0.1f, 0f);
                     placementIndicator.transform.rotation *= yRotation;
@@ -171,8 +183,6 @@ public class ARToPlaceObject : MonoBehaviour
 
     //void RotateAndMovePlace()
     //{
-
-
     //    if (placementActive) UpdatePlacementIndicator();
     //    if (Input.touchCount > 0)
     //    {   
@@ -182,7 +192,6 @@ public class ARToPlaceObject : MonoBehaviour
     //        //{
     //        //    Ray ray = ARCamera.ScreenPointToRay(touch.position);
     //        //    RaycastHit hitObject;
-
     //        //    if(Physics.Raycast(ray,out hitObject))
     //        //    {
     //        //        if (hitObject.collider.CompareTag("UnSelected"))
@@ -216,13 +225,15 @@ public class ARToPlaceObject : MonoBehaviour
         arOrigin = FindObjectOfType<ARSessionOrigin>();
         rayCastManager = arOrigin.GetComponent<ARRaycastManager>();
         buttons[0].onClick.AddListener(TFMovePlace);
-        buttons[1].onClick.AddListener(TFRotationPlace);
+        //buttons[1].onClick.AddListener(TFRotationPlace);
     }
 
     // Update is called once per frame
     void Update()
     {
-        //UpdatePlacementPose();
+        UpdatePlacementPose();
         RotateAndMovePlace();
+        TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
+        TMPro3.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
     }
 }
