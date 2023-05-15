@@ -10,6 +10,8 @@ using UnityEngine.UIElements;
 using Button = UnityEngine.UI.Button;
 using UnityEngine.XR.OpenXR.Input;
 using Pose = UnityEngine.Pose;
+using UnityEngine.InputSystem.EnhancedTouch;
+using UnityEngine.EventSystems;
 
 public class ARToPlaceObject : MonoBehaviour
 {
@@ -30,7 +32,7 @@ public class ARToPlaceObject : MonoBehaviour
 
     List<ARRaycastHit> hits = new List<ARRaycastHit>();
 
-    public Button[] buttons;
+    //public Button[] buttons;
     //public bool bRotation = false;
 
     private Quaternion yRotation;
@@ -68,7 +70,7 @@ public class ARToPlaceObject : MonoBehaviour
             //GameObject newObject = Instantiate(objectToSpawn, pose/50, A,toPlaceTransform);
             GameObject newObject = Instantiate(objectToSpawn, pose, A, toPlaceTransform);
             newObject.tag = "Point";
-            TMPro1.text = "X: " + pose.x.ToString() + ", Y: " + pose.y.ToString() + ", Z: " + pose.z.ToString();
+            //TMPro1.text = "X: " + pose.x.ToString() + ", Y: " + pose.y.ToString() + ", Z: " + pose.z.ToString();
             //TMPro1.text = "X: " + globalPosition.x.ToString() + ", Y: " + globalPosition.y.ToString() + ", Z: " + globalPosition.z.ToString();
         }
     }
@@ -142,7 +144,7 @@ public class ARToPlaceObject : MonoBehaviour
         if (placementActive) UpdatePlacementIndicator(); // move
         if (Input.touchCount > 0)
         {
-            Touch touch = Input.GetTouch(0);
+            UnityEngine.Touch touch = Input.GetTouch(0);
             TouchPosition = touch.position;
             if (touch.phase == TouchPhase.Began)
             {
@@ -215,7 +217,8 @@ public class ARToPlaceObject : MonoBehaviour
     {
         if (placementActive == false) placementActive = true;
         else placementActive = false;
-        buttons[0].GetComponentInChildren<TextMeshProUGUI>().text = ((placementActive) ? ("Закрепить\nоси") : ("Передвинуть\nоси"));
+        TMPro1.text = "Move: "+((placementActive)?"on":"off");
+        //buttons[0].GetComponentInChildren<TextMeshProUGUI>().text = ((placementActive) ? ("Закрепить\nоси") : ("Передвинуть\nоси"));
     }
 
 
@@ -224,7 +227,7 @@ public class ARToPlaceObject : MonoBehaviour
     {
         arOrigin = FindObjectOfType<ARSessionOrigin>();
         rayCastManager = arOrigin.GetComponent<ARRaycastManager>();
-        buttons[0].onClick.AddListener(TFMovePlace);
+        //buttons[0].onClick.AddListener(TFMovePlace);
         //buttons[1].onClick.AddListener(TFRotationPlace);
     }
 
@@ -233,7 +236,11 @@ public class ARToPlaceObject : MonoBehaviour
     {
         UpdatePlacementPose();
         RotateAndMovePlace();
-        TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
-        TMPro3.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
+        if (Input.touchCount == 2 && Input.GetTouch(0).phase == TouchPhase.Ended)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))
+            TFMovePlace();
+        
+
+        //TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
+        //TMPro3.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
     }
 }
