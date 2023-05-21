@@ -9,14 +9,12 @@ using Unity.XR.Oculus.Input;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.UIElements;
-using static UnityEngine.InputSystem.HID.HID;
 using Button = UnityEngine.UI.Button;
 
 public class AddPoint : MonoBehaviour
 {
     Button button;
     Vector3 pose;
-    [SerializeField] private TMP_InputField[] TMPList;
     [SerializeField] private TextMeshProUGUI[] coords;
     [SerializeField] private GameObject spawn;
     [SerializeField] private GameObject objectToSpawn;
@@ -120,9 +118,7 @@ public class AddPoint : MonoBehaviour
         button = GetComponent<Button>();
         button.onClick.AddListener(AddPointToPlace);
     }
-    int buttonIndex;
     void Update() 
     {
-
     }
 }

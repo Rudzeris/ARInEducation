@@ -12,15 +12,13 @@ using UnityEngine.XR.OpenXR.Input;
 using Pose = UnityEngine.Pose;
 using UnityEngine.InputSystem.EnhancedTouch;
 using UnityEngine.EventSystems;
-using Unity.VisualScripting;
 
 public class ARToPlaceObject : MonoBehaviour
 {
 
     //public GameObject objectToPlace;
-    [SerializeField] public GameObject placementIndicator;
-    [SerializeField] public GameObject[] Text;
-    [SerializeField] public Button deletePointsButton;
+    public GameObject placementIndicator;
+    public GameObject[] Text;
 
     private ARSessionOrigin arOrigin;
     private ARRaycastManager rayCastManager;
@@ -42,8 +40,6 @@ public class ARToPlaceObject : MonoBehaviour
     private GameObject selectedObject1;
     private GameObject selectedObject2;
     private List<Line> lines = new List<Line>();
-    private List<GameObject> Points = new List<GameObject>();
-
 
     [SerializeField] public TextMeshProUGUI TMPro1;
     [SerializeField] public TextMeshProUGUI TMPro2;
@@ -74,48 +70,11 @@ public class ARToPlaceObject : MonoBehaviour
             //GameObject newObject = Instantiate(objectToSpawn, pose/50, A,toPlaceTransform);
             GameObject newObject = Instantiate(objectToSpawn, pose, A, toPlaceTransform);
             newObject.tag = "Point";
-            Points.Add(newObject);
             //TMPro1.text = "X: " + pose.x.ToString() + ", Y: " + pose.y.ToString() + ", Z: " + pose.z.ToString();
             //TMPro1.text = "X: " + globalPosition.x.ToString() + ", Y: " + globalPosition.y.ToString() + ", Z: " + globalPosition.z.ToString();
         }
     }
 
-    private void ClearPoints()
-    {
-        foreach (var i in Points)
-        {
-            Destroy(i);
-        }
-        Points.Clear();
-    }
-
-    public void AddPointSelect(GameObject temp)
-    {
-        if (temp==null) return;
-
-        if (selectedObject1 == temp || selectedObject2 == temp)
-        {
-            if (selectedObject2 == temp)
-            {
-                selectedObject2.GetComponent<Renderer>().material.color = defaultColor;
-                selectedObject2 = null;
-            }
-            else
-            {
-                selectedObject1.GetComponent<Renderer>().material.color = defaultColor;
-                selectedObject1 = selectedObject2;
-                selectedObject2 = null;
-            }
-        }
-        else
-        {
-            if(selectedObject2!=null) 
-                selectedObject2.GetComponent<Renderer>().material.color = defaultColor;
-            selectedObject2 = selectedObject1;
-            selectedObject1 = temp;
-            selectedObject1.GetComponent<Renderer>().material.color = selectColor;
-        }
-    }
 
     private void UpdatePlacementPose()
     {
@@ -179,15 +138,45 @@ public class ARToPlaceObject : MonoBehaviour
         lines.Add(line);
     }
 
-    private Color defaultColor = Color.white;
-    private Color selectColor = Color.red;
+    private Color defaultColor=Color.gray;
+    private Color selectColor=Color.red;
     void RotateAndMovePlace()
     {
-        //if (placementActive) UpdatePlacementIndicator(); // move
+        if (placementActive) UpdatePlacementIndicator(); // move
         if (Input.touchCount > 0)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
+            TouchPosition = touch.position;
+            if (touch.phase == TouchPhase.Began)
+            {
+                Ray ray = ARCamera.ScreenPointToRay(touch.position);
+                RaycastHit hitObject;
+
+                if (Physics.Raycast(ray, out hitObject))
+                {
+                    if (hitObject.collider.CompareTag("Point"))
+                    {
+                        if (selectedObject1 == null)
+                        {
+                            selectedObject1 = hitObject.collider.gameObject;
+                            selectedObject1.GetComponent<Renderer>().material.color = selectColor;
+                        }
+                        else if (selectedObject2 == null && selectedObject1 != hitObject.collider.gameObject)
+                        {
+                            selectedObject2.GetComponent<Renderer>().material.color = selectColor;
+                            selectedObject2 = hitObject.collider.gameObject;
+                            // создание линии между двумя выделенными объектами Point
+                            CreateLine(selectedObject1, selectedObject2);
+                            // сброс выделения
+                            selectedObject1.GetComponent<Renderer>().material.color = defaultColor;
+                            selectedObject2.GetComponent<Renderer>().material.color=defaultColor;
+                            selectedObject1 = null;
+                            selectedObject2 = null;
+                        }
+                    }
+                }
+            }
+            else if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
             {
                 if (true)//bRotation)
                 {
@@ -198,11 +187,42 @@ public class ARToPlaceObject : MonoBehaviour
         }
     }
 
+
+    //void RotateAndMovePlace()
+    //{
+    //    if (placementActive) UpdatePlacementIndicator();
+    //    if (Input.touchCount > 0)
+    //    {   
+    //        Touch touch = Input.GetTouch(0);
+    //        TouchPosition = touch.position;
+    //        //if (touch.phase == TouchPhase.Began)
+    //        //{
+    //        //    Ray ray = ARCamera.ScreenPointToRay(touch.position);
+    //        //    RaycastHit hitObject;
+    //        //    if(Physics.Raycast(ray,out hitObject))
+    //        //    {
+    //        //        if (hitObject.collider.CompareTag("UnSelected"))
+    //        //        {
+    //        //            hitObject.collider.gameObject.tag = "Selected";
+    //        //        }
+    //        //    }
+    //        //}
+    //        if(touch.phase == TouchPhase.Moved && Input.touchCount == 1)
+    //        {
+    //            if (bRotation)
+    //            {
+    //                yRotation = Quaternion.Euler(0f, touch.deltaPosition.x * 0.1f, 0f);
+    //                placementIndicator.transform.rotation *= yRotation;
+    //            }
+    //        }
+    //    }
+    //}
+
     void TFMovePlace()
     {
         if (placementActive == false) placementActive = true;
         else placementActive = false;
-        TMPro1.text = "Move: " + ((placementActive) ? "on" : "off");
+        TMPro1.text = "Move: "+((placementActive)?"on":"off");
         //buttons[0].GetComponentInChildren<TextMeshProUGUI>().text = ((placementActive) ? ("Закрепить\nоси") : ("Передвинуть\nоси"));
     }
 
@@ -212,7 +232,6 @@ public class ARToPlaceObject : MonoBehaviour
     {
         arOrigin = FindObjectOfType<ARSessionOrigin>();
         rayCastManager = arOrigin.GetComponent<ARRaycastManager>();
-        deletePointsButton.onClick.AddListener(ClearPoints);
         //buttons[0].onClick.AddListener(TFMovePlace);
         //buttons[1].onClick.AddListener(TFRotationPlace);
     }
@@ -220,11 +239,11 @@ public class ARToPlaceObject : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //UpdatePlacementPose();
+        UpdatePlacementPose();
         RotateAndMovePlace();
         if (Input.touchCount == 2 && Input.GetTouch(0).phase == TouchPhase.Ended)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))
             TFMovePlace();
-
+        
 
         //TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro3.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
