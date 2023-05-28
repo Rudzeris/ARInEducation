@@ -72,19 +72,24 @@ public class ARToPlaceObject : MonoBehaviour
             // Получаем Transform компонент объекта ToPlace
             Transform toPlaceTransform = placementIndicator.transform;
             pose /= 50;
-            double rotation = toPlaceTransform.eulerAngles.y;
-            float x = pose.x;
+            double rotation = -toPlaceTransform.eulerAngles.y;
+            float x = 0;
+            x+= pose.x;
             float x1 = toPlaceTransform.transform.position.x;
-            float z = pose.z;
+            float z = 0;
+            z += pose.z;
             float z1 = toPlaceTransform.transform.position.z;
             double r = Math.Sqrt(x * x + z * z);
-            double t = Math.Atan2(x, z);
+            double t = Math.Atan2(z, x);
             double t2 = t + rotation / 180.0 * Math.PI;
             double x2 = (double)x1 + r * Math.Cos(t2);
             double z2 = (double)z1 + r * Math.Sin(t2);
-            pose.x = (float)z2;
-            pose.z = (float)x2;
+            pose.x = (float)x2;
+            //pose.x = x + x1;
+            //pose.z = z + z1;
+            pose.z = (float)z2;
             pose.y += toPlaceTransform.transform.position.y;
+
             //Vector3 globalPosition = toPlaceTransform.TransformPoint(pose);
             // Создаем новый экземпляр objectToPlace
             //GameObject newObject = Instantiate(objectToSpawn, pose/50, A,toPlaceTransform);
@@ -231,7 +236,7 @@ public class ARToPlaceObject : MonoBehaviour
     private Color selectColor = Color.red;
     void RotateAndMovePlace()
     {
-        if (placementActive) UpdatePlacementIndicator(); // move
+        //if (placementActive) UpdatePlacementIndicator(); // move
         if (Input.touchCount > 0)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
@@ -290,7 +295,7 @@ public class ARToPlaceObject : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        UpdatePlacementPose();
+        //UpdatePlacementPose();
         RotateAndMovePlace();
         //if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
         //    TFMovePlace();
