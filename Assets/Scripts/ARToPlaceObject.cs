@@ -27,6 +27,10 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public Button showPointsButton;
     [SerializeField] public Button showVectorsButton;
     [SerializeField] public Button addLineButton;
+    [SerializeField] public UnityEngine.UI.Slider heightSlider;
+    [SerializeField] public UnityEngine.UI.Slider scaleSlider;
+    [SerializeField] public Button heightSliderButton;
+    [SerializeField] public Button sizeSliderButton;
     private float eps = 0.001f;
 
     private Camera cameraPC;
@@ -82,8 +86,8 @@ public class ARToPlaceObject : MonoBehaviour
             double r = Math.Sqrt(x * x + z * z);
             double t = Math.Atan2(z, x);
             double t2 = t + rotation / 180.0 * Math.PI;
-            double x2 = (double)x1 + r * Math.Cos(t2);
-            double z2 = (double)z1 + r * Math.Sin(t2);
+            double x2 = (double)x1 + r * Math.Cos(t2)*(toPlaceTransform.localScale.y/5);
+            double z2 = (double)z1 + r * Math.Sin(t2)*(toPlaceTransform.localScale.y/5);
             pose.x = (float)x2;
             //pose.x = x + x1;
             //pose.z = z + z1;
@@ -279,6 +283,27 @@ public class ARToPlaceObject : MonoBehaviour
         foreach (var i in vectorList)
             i.GetComponent<MeshRenderer>().enabled = VectorEnabled;
     }
+
+    void UpYDefault()
+    {
+        heightSlider.value = 0.35f;
+    }
+    void UpY()
+    {
+        float height = heightSlider.value;
+        placementIndicator.transform.position = new Vector3(placementIndicator.transform.position.x, height-0.35f, placementIndicator.transform.position.z);
+    }
+
+    void ScaleSliderObjectDefault()
+    {
+        scaleSlider.value = 5;
+    }
+    void ScaleSliderObject()
+    {
+        float scale = scaleSlider.value;
+        placementIndicator.transform.localScale = new Vector3(scale, scale, scale);
+    }
+
     // Start is called before the first frame update
     void Start()
     {
@@ -289,6 +314,8 @@ public class ARToPlaceObject : MonoBehaviour
         showPointsButton.onClick.AddListener(ShowPoints);
         showVectorsButton.onClick.AddListener(ShowVectors);
         addLineButton.onClick.AddListener(CreateLine);
+        heightSliderButton.onClick.AddListener(UpYDefault);
+        sizeSliderButton.onClick.AddListener(ScaleSliderObjectDefault);
         //buttons[0].onClick.AddListener(TFMovePlace);
         //buttons[1].onClick.AddListener(TFRotationPlace);
     }
@@ -301,8 +328,8 @@ public class ARToPlaceObject : MonoBehaviour
         //    TFMovePlace();
         if (Input.touchCount == 2 && Input.GetTouch(0).phase == TouchPhase.Ended)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))
             TFMovePlace();
-
-
+        UpY();
+        ScaleSliderObject();
         TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro1.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
     }
