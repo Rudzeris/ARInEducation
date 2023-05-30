@@ -67,7 +67,7 @@ public class ARToPlaceObject : MonoBehaviour
         float q = 0, w = 0;
         foreach (var i in Points)
         {
-            if (Vector3.Distance(temp, i.transform.position) < eps) return true;
+            if (Vector3.Distance(temp, i.transform.position) < eps/defaultScale*scaleSlider.value) return true;
         }
         return false;
     }
@@ -79,6 +79,7 @@ public class ARToPlaceObject : MonoBehaviour
             // Получаем Transform компонент объекта ToPlace
             Transform toPlaceTransform = placementIndicator.transform;
             pose /= 50;
+            //pose = pose / defaultScale * scaleSlider.value;
             double rotation = -toPlaceTransform.eulerAngles.y;
             float x = 0;
             x+= pose.x;
@@ -89,13 +90,13 @@ public class ARToPlaceObject : MonoBehaviour
             double r = Math.Sqrt(x * x + z * z);
             double t = Math.Atan2(z, x);
             double t2 = t + rotation / 180.0 * Math.PI;
-            double x2 = (double)x1 + r * Math.Cos(t2)*(toPlaceTransform.localScale.y/5);
-            double z2 = (double)z1 + r * Math.Sin(t2)*(toPlaceTransform.localScale.y/5);
+            double x2 = (double)x1 + r * Math.Cos(t2)*(toPlaceTransform.localScale.y/defaultScale);
+            double z2 = (double)z1 + r * Math.Sin(t2)*(toPlaceTransform.localScale.y/defaultScale);
             pose.x = (float)x2;
             //pose.x = x + x1;
             //pose.z = z + z1;
             pose.z = (float)z2;
-            pose.y += toPlaceTransform.transform.position.y;
+            pose.y = pose.y / defaultScale * scaleSlider.value + toPlaceTransform.transform.position.y;
 
             //Vector3 globalPosition = toPlaceTransform.TransformPoint(pose);
             // Создаем новый экземпляр objectToPlace
@@ -106,6 +107,7 @@ public class ARToPlaceObject : MonoBehaviour
                 newObject.tag = "Point";
                 newObject.AddComponent<PointS>();
                 newObject.GetComponent<MeshRenderer>().enabled = PointsEnabled;
+                //newObject.transform.localScale = newObject.transform.localScale / defaultScale * scaleSlider.value;
                 Points.Add(newObject);
                 TMPro1.text = "X: " + pose.x.ToString() + ", Y: " + pose.y.ToString() + ", Z: " + pose.z.ToString();
                 //TMPro1.text = "X: " + globalPosition.x.ToString() + ", Y: " + globalPosition.y.ToString() + ", Z: " + globalPosition.z.ToString();
@@ -194,11 +196,12 @@ public class ARToPlaceObject : MonoBehaviour
     {
         if (placementPoseIsValid)
         {
+            UpYDefault();
             placementIndicator.SetActive(true);
             //placementIndicator.transform.SetPositionAndRotation(placementPose.position,placementPose.rotation);
             placementIndicator.transform.position = placementPose.position;
-            placementIndicator.transform.position = new Vector3( placementIndicator.transform.position.x,
-                placementIndicator.transform.position.y+heightSlider.value, placementIndicator.transform.position.z);
+            //placementIndicator.transform.position = new Vector3( placementIndicator.transform.position.x,
+            //    placementIndicator.transform.position.y+heightSlider.value, placementIndicator.transform.position.z);
         }
         else
             placementIndicator.SetActive(false);
@@ -246,6 +249,7 @@ public class ARToPlaceObject : MonoBehaviour
     void RotateAndMovePlace()
     {
         if (placementActive) UpdatePlacementIndicator(); // move
+        else UpY();
         if (Input.touchCount > 0)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
@@ -260,11 +264,11 @@ public class ARToPlaceObject : MonoBehaviour
         }
     }
 
-    public float doubleClickTine = 0.3f;
+    public float doubleClickTime = 0.3f;
     private float lastClickTime;
     void TFMovePlace()
     {
-        if (Time.time - lastClickTime < doubleClickTine)
+        if (Time.time - lastClickTime < doubleClickTime)
         {
             placementActive = !placementActive;
 
@@ -289,14 +293,15 @@ public class ARToPlaceObject : MonoBehaviour
             i.GetComponent<MeshRenderer>().enabled = VectorEnabled;
     }
 
+    float defaultY;
     void UpYDefault()
     {
+        defaultY=placementIndicator.transform.position.y;
         heightSlider.value =defaultHeight;
     }
     void UpY()
     {
-        float height = heightSlider.value;
-        placementIndicator.transform.position = new Vector3(placementIndicator.transform.position.x, height, placementIndicator.transform.position.z);
+        placementIndicator.transform.position = new Vector3(placementIndicator.transform.position.x, defaultY * heightSlider.value/defaultHeight, placementIndicator.transform.position.z);
     }
 
     void ScaleSliderObjectDefault()
@@ -323,9 +328,10 @@ public class ARToPlaceObject : MonoBehaviour
         sizeSliderButton.onClick.AddListener(ScaleSliderObjectDefault);
         //buttons[0].onClick.AddListener(TFMovePlace);
         //buttons[1].onClick.AddListener(TFRotationPlace);
-        defaultHeight = heightSlider.value;
+        defaultHeight=heightSlider.value;
         defaultScale=scaleSlider.value;
-        
+        UpYDefault();
+        ScaleSliderObjectDefault();
     }
     // Update is called once per frame
     void Update()
@@ -336,7 +342,6 @@ public class ARToPlaceObject : MonoBehaviour
         //    TFMovePlace();
         if (Input.touchCount == 2 && Input.GetTouch(0).phase == TouchPhase.Ended)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))
             TFMovePlace();
-        UpY();
         ScaleSliderObject();
         TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro1.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
