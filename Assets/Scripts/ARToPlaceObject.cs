@@ -59,6 +59,9 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public TextMeshProUGUI TMPro2;
     [SerializeField] public TextMeshProUGUI TMPro3;
 
+    float defaultHeight=1;
+    float defaultScale = 1;
+
     bool SearchObject(Vector3 temp)
     {
         float q = 0, w = 0;
@@ -194,6 +197,8 @@ public class ARToPlaceObject : MonoBehaviour
             placementIndicator.SetActive(true);
             //placementIndicator.transform.SetPositionAndRotation(placementPose.position,placementPose.rotation);
             placementIndicator.transform.position = placementPose.position;
+            placementIndicator.transform.position = new Vector3( placementIndicator.transform.position.x,
+                placementIndicator.transform.position.y+heightSlider.value, placementIndicator.transform.position.z);
         }
         else
             placementIndicator.SetActive(false);
@@ -240,7 +245,7 @@ public class ARToPlaceObject : MonoBehaviour
     private Color selectColor = Color.red;
     void RotateAndMovePlace()
     {
-        //if (placementActive) UpdatePlacementIndicator(); // move
+        if (placementActive) UpdatePlacementIndicator(); // move
         if (Input.touchCount > 0)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
@@ -286,17 +291,17 @@ public class ARToPlaceObject : MonoBehaviour
 
     void UpYDefault()
     {
-        heightSlider.value = 0.35f;
+        heightSlider.value =defaultHeight;
     }
     void UpY()
     {
         float height = heightSlider.value;
-        placementIndicator.transform.position = new Vector3(placementIndicator.transform.position.x, height-0.35f, placementIndicator.transform.position.z);
+        placementIndicator.transform.position = new Vector3(placementIndicator.transform.position.x, height, placementIndicator.transform.position.z);
     }
 
     void ScaleSliderObjectDefault()
     {
-        scaleSlider.value = 5;
+        scaleSlider.value = defaultScale;
     }
     void ScaleSliderObject()
     {
@@ -318,11 +323,14 @@ public class ARToPlaceObject : MonoBehaviour
         sizeSliderButton.onClick.AddListener(ScaleSliderObjectDefault);
         //buttons[0].onClick.AddListener(TFMovePlace);
         //buttons[1].onClick.AddListener(TFRotationPlace);
+        defaultHeight = heightSlider.value;
+        defaultScale=scaleSlider.value;
+        
     }
     // Update is called once per frame
     void Update()
     {
-        //UpdatePlacementPose();
+        UpdatePlacementPose();
         RotateAndMovePlace();
         //if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
         //    TFMovePlace();
