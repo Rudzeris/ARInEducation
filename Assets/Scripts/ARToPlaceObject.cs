@@ -192,11 +192,13 @@ public class ARToPlaceObject : MonoBehaviour
         }
     }
 
+    float defaultY;
     private void UpdatePlacementIndicator()
     {
         if (placementPoseIsValid)
         {
             UpYDefault();
+            defaultY = placementIndicator.transform.position.y;
             placementIndicator.SetActive(true);
             //placementIndicator.transform.SetPositionAndRotation(placementPose.position,placementPose.rotation);
             placementIndicator.transform.position = placementPose.position;
@@ -292,16 +294,14 @@ public class ARToPlaceObject : MonoBehaviour
         foreach (var i in vectorList)
             i.GetComponent<MeshRenderer>().enabled = VectorEnabled;
     }
-
-    float defaultY;
+    
     void UpYDefault()
     {
-        defaultY=placementIndicator.transform.position.y;
         heightSlider.value =defaultHeight;
     }
     void UpY()
     {
-        placementIndicator.transform.position = new Vector3(placementIndicator.transform.position.x, defaultY * heightSlider.value/defaultHeight, placementIndicator.transform.position.z);
+        placementIndicator.transform.position = new Vector3(placementIndicator.transform.position.x, defaultY + heightSlider.value, placementIndicator.transform.position.z);
     }
 
     void ScaleSliderObjectDefault()
