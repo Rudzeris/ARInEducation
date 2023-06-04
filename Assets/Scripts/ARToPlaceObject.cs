@@ -22,11 +22,13 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public GameObject placementIndicator;
     [SerializeField] public GameObject[] vectorList;
     [SerializeField] public GameObject[] Text;
+    [SerializeField] public GameObject objectToSpawn;
     [SerializeField] public Button deletePointsButton;
     [SerializeField] public Button destroyPointButton;
     [SerializeField] public Button showPointsButton;
     [SerializeField] public Button showVectorsButton;
     [SerializeField] public Button addLineButton;
+    [SerializeField] public Button[] addObjectButtons;
     [SerializeField] public UnityEngine.UI.Slider heightSlider;
     [SerializeField] public UnityEngine.UI.Slider scaleSlider;
     [SerializeField] public Button heightSliderButton;
@@ -59,57 +61,62 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public TextMeshProUGUI TMPro2;
     [SerializeField] public TextMeshProUGUI TMPro3;
 
-    float defaultHeight=1;
+    float defaultHeight = 1;
     float defaultScale = 1;
 
-    bool SearchObject(Vector3 temp)
+    private bool SearchObject(Vector3 temp)
     {
         float q = 0, w = 0;
         foreach (var i in Points)
         {
-            if (Vector3.Distance(temp, i.transform.position) < eps/defaultScale*scaleSlider.value) return true;
+            if (Vector3.Distance(temp, i.transform.position) < eps / defaultScale * scaleSlider.value) return true;
         }
         return false;
     }
 
-    public void SpawnObject(GameObject objectToSpawn, Vector3 pose, Quaternion A)
+    private Vector3 AddPointCoord(GameObject objectToSpawn, Vector3 pose, Transform toPlaceTransform)
     {
-        if (objectToSpawn != null)
-        {
-            // Получаем Transform компонент объекта ToPlace
-            Transform toPlaceTransform = placementIndicator.transform;
-            pose /= 50;
-            //pose = pose / defaultScale * scaleSlider.value;
-            double rotation = -toPlaceTransform.eulerAngles.y;
-            float x = 0;
-            x+= pose.x;
-            float x1 = toPlaceTransform.transform.position.x;
-            float z = 0;
-            z += pose.z;
-            float z1 = toPlaceTransform.transform.position.z;
-            double r = Math.Sqrt(x * x + z * z);
-            double t = Math.Atan2(z, x);
-            double t2 = t + rotation / 180.0 * Math.PI;
-            double x2 = (double)x1 + r * Math.Cos(t2)*(toPlaceTransform.localScale.y/defaultScale);
-            double z2 = (double)z1 + r * Math.Sin(t2)*(toPlaceTransform.localScale.y/defaultScale);
-            pose.x = (float)x2;
-            //pose.x = x + x1;
-            //pose.z = z + z1;
-            pose.z = (float)z2;
-            pose.y = pose.y / defaultScale * scaleSlider.value + toPlaceTransform.transform.position.y;
+        pose /= 50;
+        //pose = pose / defaultScale * scaleSlider.value;
+        double rotation = -toPlaceTransform.eulerAngles.y;
+        float x = 0;
+        x += pose.x;
+        float x1 = toPlaceTransform.transform.position.x;
+        float z = 0;
+        z += pose.z;
+        float z1 = toPlaceTransform.transform.position.z;
+        double r = Math.Sqrt(x * x + z * z);
+        double t = Math.Atan2(z, x);
+        double t2 = t + rotation / 180.0 * Math.PI;
+        double x2 = (double)x1 + r * Math.Cos(t2) * (toPlaceTransform.localScale.y / defaultScale);
+        double z2 = (double)z1 + r * Math.Sin(t2) * (toPlaceTransform.localScale.y / defaultScale);
+        pose.x = (float)x2;
+        //pose.x = x + x1;
+        //pose.z = z + z1;
+        pose.z = (float)z2;
+        pose.y = pose.y / defaultScale * scaleSlider.value + toPlaceTransform.transform.position.y;
+        return pose;
+    }
 
-            //Vector3 globalPosition = toPlaceTransform.TransformPoint(pose);
-            // Создаем новый экземпляр objectToPlace
-            //GameObject newObject = Instantiate(objectToSpawn, pose/50, A,toPlaceTransform);
+    public void SpawnObject(GameObject oToSpawn, Vector3 pose, Quaternion A)
+    {
+        if (oToSpawn != null)
+        {
+            Transform toPlaceTransform = placementIndicator.transform;
+            pose = AddPointCoord(oToSpawn, pose,toPlaceTransform);
             if (!SearchObject(pose))
             {
-                GameObject newObject = Instantiate(objectToSpawn, pose, A, toPlaceTransform);
-                newObject.tag = "Point";
-                newObject.AddComponent<PointS>();
-                newObject.GetComponent<MeshRenderer>().enabled = PointsEnabled;
-                //newObject.transform.localScale = newObject.transform.localScale / defaultScale * scaleSlider.value;
+                GameObject newObject = Instantiate(oToSpawn, pose, A, toPlaceTransform);
                 Points.Add(newObject);
+                newObject.tag = "Point";
+                if (newObject.GetComponent<MeshRenderer>() == null)
+                {
+                    newObject.AddComponent<MeshRenderer>();
+                }
+                newObject.GetComponent<MeshRenderer>().enabled = PointsEnabled;
                 TMPro1.text = "X: " + pose.x.ToString() + ", Y: " + pose.y.ToString() + ", Z: " + pose.z.ToString();
+                newObject.AddComponent<PointS>();
+                //newObject.transform.localScale = newObject.transform.localScale / defaultScale * scaleSlider.value;
                 //TMPro1.text = "X: " + globalPosition.x.ToString() + ", Y: " + globalPosition.y.ToString() + ", Z: " + globalPosition.z.ToString();
 
             }
@@ -218,11 +225,27 @@ public class ARToPlaceObject : MonoBehaviour
     {
         Points.Remove(temp);
     }
-
     private void CreateLine()
+    {
+        CreateLine(selectedObject1, selectedObject2);
+    }
+    private bool SearchLine(ref GameObject selectedObject1, ref GameObject selectedObject2)
     {
         if (selectedObject1 != null && selectedObject2 != null)
         {
+            PointS pSO1= selectedObject1.GetComponent<PointS>();
+            foreach (var x in pSO1.lines)
+                if (x.GetComponent<Line>().startPoint == selectedObject2 || selectedObject2 == x.GetComponent<Line>().endPoint)
+                    return false;
+            return true;
+        }
+        return false;
+    }
+    private void CreateLine(GameObject selectedObject1=null,GameObject selectedObject2=null)
+    {
+        if (selectedObject1 != null && selectedObject2 != null)
+        {
+            if (!SearchLine(ref selectedObject1, ref selectedObject2)) return;
             GameObject lineObject = new GameObject("Line");
 
             Line line = lineObject.AddComponent<Line>();
@@ -248,10 +271,9 @@ public class ARToPlaceObject : MonoBehaviour
 
     private Color defaultColor = Color.white;
     private Color selectColor = Color.red;
-    void RotateAndMovePlace()
+    private void RotateAndMovePlace()
     {
-        if (placementActive) UpdatePlacementIndicator(); // move
-        else UpY();
+        if (placementActive) UpdatePlacementIndicator(); else UpY(); // move and Y
         if (Input.touchCount > 0)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
@@ -268,7 +290,7 @@ public class ARToPlaceObject : MonoBehaviour
 
     public float doubleClickTime = 0.3f;
     private float lastClickTime;
-    void TFMovePlace()
+    private void TFMovePlace()
     {
         if (Time.time - lastClickTime < doubleClickTime)
         {
@@ -281,37 +303,80 @@ public class ARToPlaceObject : MonoBehaviour
     }
 
     bool PointsEnabled = true;
-    void ShowPoints()
+    private void ShowPoints()
     {
         PointsEnabled = !PointsEnabled;
         foreach (var i in Points)
             i.GetComponent<MeshRenderer>().enabled = PointsEnabled;
     }
     bool VectorEnabled = true;
-    void ShowVectors()
+    private void ShowVectors()
     {
         VectorEnabled = !VectorEnabled;
         foreach (var i in vectorList)
             i.GetComponent<MeshRenderer>().enabled = VectorEnabled;
     }
-    
-    void UpYDefault()
+
+    private void UpYDefault()
     {
-        heightSlider.value =defaultHeight;
+        heightSlider.value = defaultHeight;
     }
-    void UpY()
+    private void UpY()
     {
         placementIndicator.transform.position = new Vector3(placementIndicator.transform.position.x, defaultY + heightSlider.value, placementIndicator.transform.position.z);
     }
 
-    void ScaleSliderObjectDefault()
+    private void ScaleSliderObjectDefault()
     {
         scaleSlider.value = defaultScale;
     }
-    void ScaleSliderObject()
+    private void ScaleSliderObject()
     {
         float scale = scaleSlider.value;
         placementIndicator.transform.localScale = new Vector3(scale, scale, scale);
+    }
+
+    private GameObject ReturnGameObject(ref GameObject temp, Vector3 V)
+    {
+        Quaternion t = new Quaternion(0f, 0f, 0f, 0f);
+        SpawnObject(temp, V, t);
+        return Points[Points.Count - 1];
+    }
+    //Стандартные фигуры
+    private void AddFigureSquare()
+    {
+        if (objectToSpawn == null) return;
+        float weight = 3, length = 5;
+        Vector3 begin = new Vector3(0f, 0f, 0f);
+        Vector3 a, a2, b, b2, c, c2, d, d2;
+        float h = 0;
+        a = new Vector3(begin.x, h + begin.y, begin.z);
+        b = new Vector3(begin.x + weight, h + begin.y, begin.z);
+        c = new Vector3(begin.x + weight, h + begin.y, begin.z + length);
+        d = new Vector3(begin.x, h + begin.y, begin.z + length);
+        h += 5;
+        a2 = new Vector3(begin.x, h + begin.y, begin.z);
+        b2 = new Vector3(begin.x + weight, h + begin.y, begin.z);
+        c2 = new Vector3(begin.x + weight, h + begin.y, begin.z + length);
+        d2 = new Vector3(begin.x, h + begin.y, begin.z + length);
+
+        List<GameObject> tempList=new List<GameObject>();
+        GameObject A, B, C, D, A2, B2, C2, D2;
+        A=ReturnGameObject(ref objectToSpawn,a);
+        A2=ReturnGameObject(ref objectToSpawn,a2);
+        if (A == A2) return;
+        B=ReturnGameObject(ref objectToSpawn,b);
+        B2=ReturnGameObject(ref objectToSpawn,b2);
+        C=ReturnGameObject(ref objectToSpawn,c);
+        C2=ReturnGameObject(ref objectToSpawn,c2);
+        D=ReturnGameObject(ref objectToSpawn,d);
+        D2=ReturnGameObject(ref objectToSpawn,d2);
+        tempList.Add(A); tempList.Add(B); tempList.Add(C); tempList.Add (D);
+        tempList.Add(A2); tempList.Add(B2); tempList.Add(C2); tempList.Add (D2);
+        CreateLine(A, A2); CreateLine(B, B2); CreateLine(C, C2); CreateLine(D, D2);
+        CreateLine(A, B); CreateLine(B, C); CreateLine(C, D); CreateLine(D, A);
+        CreateLine(A2, B2); CreateLine(B2, C2); CreateLine(C2, D2); CreateLine(D2, A2);
+
     }
 
     // Start is called before the first frame update
@@ -326,10 +391,11 @@ public class ARToPlaceObject : MonoBehaviour
         addLineButton.onClick.AddListener(CreateLine);
         heightSliderButton.onClick.AddListener(UpYDefault);
         sizeSliderButton.onClick.AddListener(ScaleSliderObjectDefault);
+        addObjectButtons[0].onClick.AddListener(AddFigureSquare);
         //buttons[0].onClick.AddListener(TFMovePlace);
         //buttons[1].onClick.AddListener(TFRotationPlace);
-        defaultHeight=heightSlider.value;
-        defaultScale=scaleSlider.value;
+        defaultHeight = heightSlider.value;
+        defaultScale = scaleSlider.value;
         UpYDefault();
         ScaleSliderObjectDefault();
     }

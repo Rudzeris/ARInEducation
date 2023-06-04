@@ -5,7 +5,6 @@ using UnityEngine;
 public class PointS : MonoBehaviour
 {
     public List<GameObject> lines = new List<GameObject>();
-
     public void OnDestroy()
     {
         ARToPlaceObject artpo = FindObjectOfType<ARToPlaceObject>();

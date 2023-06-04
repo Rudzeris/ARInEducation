@@ -16,14 +16,12 @@ public class AddPoint : MonoBehaviour
 {
     Button button;
     Vector3 pose;
-    [SerializeField] private TMP_InputField[] TMPList;
+    //[SerializeField] private TMP_InputField[] TMPList;
     [SerializeField] private TextMeshProUGUI[] coords;
-    [SerializeField] private GameObject spawn;
+    //[SerializeField] private GameObject spawn;
     [SerializeField] private GameObject objectToSpawn;
     //[SerializeField] private 
     //InputField InF;
-
-    public List<Line> connectedLines = new List<Line>();
 
     int intparse(char a)
     {
