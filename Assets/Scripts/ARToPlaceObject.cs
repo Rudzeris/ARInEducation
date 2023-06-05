@@ -14,6 +14,10 @@ using UnityEngine.InputSystem.EnhancedTouch;
 using UnityEngine.EventSystems;
 using Unity.VisualScripting;
 using UnityEngine.Experimental.GlobalIllumination;
+using System.Drawing;
+using Microsoft.Unity.VisualStudio.Editor;
+using Image = UnityEngine.UI.Image;
+using Color = UnityEngine.Color;
 
 public class ARToPlaceObject : MonoBehaviour
 {
@@ -29,12 +33,14 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public Button showVectorsButton;
     [SerializeField] public Button addLineButton;
     [SerializeField] public Button[] addObjectButtons;
+    [SerializeField] public Button[] xyzCoordsButtons;
     [SerializeField] public UnityEngine.UI.Slider heightSlider;
     [SerializeField] public UnityEngine.UI.Slider scaleSlider;
     [SerializeField] public Button heightSliderButton;
     [SerializeField] public Button sizeSliderButton;
     private float eps = 0.001f;
 
+    private AddPoint addPointClass;
     private Camera cameraPC;
     private ARSessionOrigin arOrigin;
     private ARRaycastManager rayCastManager;
@@ -74,13 +80,13 @@ public class ARToPlaceObject : MonoBehaviour
         return false;
     }
 
-    private Vector3 AddPointCoord(GameObject objectToSpawn, Vector3 pose, Transform toPlaceTransform)
+    private Vector3 AddPointCoord(Vector3 pose, Transform toPlaceTransform)
     {
         pose /= 50;
         //pose = pose / defaultScale * scaleSlider.value;
         double rotation = -toPlaceTransform.eulerAngles.y;
         float x = 0;
-        x += pose.x;
+        x -= pose.x;
         float x1 = toPlaceTransform.transform.position.x;
         float z = 0;
         z += pose.z;
@@ -103,7 +109,7 @@ public class ARToPlaceObject : MonoBehaviour
         if (oToSpawn != null)
         {
             Transform toPlaceTransform = placementIndicator.transform;
-            pose = AddPointCoord(oToSpawn, pose,toPlaceTransform);
+            pose = AddPointCoord(pose, toPlaceTransform);
             if (!SearchObject(pose))
             {
                 GameObject newObject = Instantiate(oToSpawn, pose, A, toPlaceTransform);
@@ -233,7 +239,7 @@ public class ARToPlaceObject : MonoBehaviour
     {
         if (selectedObject1 != null && selectedObject2 != null)
         {
-            PointS pSO1= selectedObject1.GetComponent<PointS>();
+            PointS pSO1 = selectedObject1.GetComponent<PointS>();
             foreach (var x in pSO1.lines)
                 if (x.GetComponent<Line>().startPoint == selectedObject2 || selectedObject2 == x.GetComponent<Line>().endPoint)
                     return false;
@@ -241,7 +247,7 @@ public class ARToPlaceObject : MonoBehaviour
         }
         return false;
     }
-    private void CreateLine(GameObject selectedObject1=null,GameObject selectedObject2=null)
+    private void CreateLine(GameObject selectedObject1 = null, GameObject selectedObject2 = null)
     {
         if (selectedObject1 != null && selectedObject2 != null)
         {
@@ -273,18 +279,16 @@ public class ARToPlaceObject : MonoBehaviour
     private Color selectColor = Color.red;
     private void RotateAndMovePlace()
     {
-        if (placementActive) UpdatePlacementIndicator(); else UpY(); // move and Y
+        //if (placementActive) UpdatePlacementIndicator(); else UpY(); // move and Y
         if (Input.touchCount > 0)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
-            {
-                if (true)//bRotation)
+            if (selectedObject1 == null && xCoord && yCoord && zCoord)
+                if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
                 {
                     yRotation = Quaternion.Euler(0f, -touch.deltaPosition.x * 0.1f, 0f);
                     placementIndicator.transform.rotation *= yRotation;
                 }
-            }
         }
     }
 
@@ -360,25 +364,88 @@ public class ARToPlaceObject : MonoBehaviour
         c2 = new Vector3(begin.x + weight, h + begin.y, begin.z + length);
         d2 = new Vector3(begin.x, h + begin.y, begin.z + length);
 
-        List<GameObject> tempList=new List<GameObject>();
+        List<GameObject> tempList = new List<GameObject>();
         GameObject A, B, C, D, A2, B2, C2, D2;
-        A=ReturnGameObject(ref objectToSpawn,a);
-        A2=ReturnGameObject(ref objectToSpawn,a2);
+        A = ReturnGameObject(ref objectToSpawn, a);
+        A2 = ReturnGameObject(ref objectToSpawn, a2);
         if (A == A2) return;
-        B=ReturnGameObject(ref objectToSpawn,b);
-        B2=ReturnGameObject(ref objectToSpawn,b2);
-        C=ReturnGameObject(ref objectToSpawn,c);
-        C2=ReturnGameObject(ref objectToSpawn,c2);
-        D=ReturnGameObject(ref objectToSpawn,d);
-        D2=ReturnGameObject(ref objectToSpawn,d2);
-        tempList.Add(A); tempList.Add(B); tempList.Add(C); tempList.Add (D);
-        tempList.Add(A2); tempList.Add(B2); tempList.Add(C2); tempList.Add (D2);
+        B = ReturnGameObject(ref objectToSpawn, b);
+        B2 = ReturnGameObject(ref objectToSpawn, b2);
+        C = ReturnGameObject(ref objectToSpawn, c);
+        C2 = ReturnGameObject(ref objectToSpawn, c2);
+        D = ReturnGameObject(ref objectToSpawn, d);
+        D2 = ReturnGameObject(ref objectToSpawn, d2);
+        tempList.Add(A); tempList.Add(B); tempList.Add(C); tempList.Add(D);
+        tempList.Add(A2); tempList.Add(B2); tempList.Add(C2); tempList.Add(D2);
         CreateLine(A, A2); CreateLine(B, B2); CreateLine(C, C2); CreateLine(D, D2);
         CreateLine(A, B); CreateLine(B, C); CreateLine(C, D); CreateLine(D, A);
         CreateLine(A2, B2); CreateLine(B2, C2); CreateLine(C2, D2); CreateLine(D2, A2);
 
     }
+    private void VisibleButton()
+    {
+        addLineButton.gameObject.SetActive(selectedObject1 != null && selectedObject2 != null);
+        destroyPointButton.gameObject.SetActive(selectedObject1 != null && selectedObject2 == null);
+        deletePointsButton.gameObject.SetActive(Points.Count > 0);
+    }
 
+    Vector2 beginTouch, endTouch;
+    bool xCoord=true, yCoord=true, zCoord=true;
+    private void XCoordsEnabled()
+    {
+        xCoord = !xCoord;
+        xyzCoordsButtons[0].GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
+    }
+    private void YCoordsEnabled()
+    {
+        yCoord = !yCoord;
+        xyzCoordsButtons[1].GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
+    }
+    private void ZCoordsEnabled()
+    {
+        zCoord = !zCoord;
+        xyzCoordsButtons[2].GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
+    }
+    private void MovePoint()
+    {
+        if (selectedObject2 != null || selectedObject1 == null)
+            return;
+        if (Input.touchCount == 1)
+        {
+            UnityEngine.Touch touch = Input.GetTouch(0);
+            float x=0, y=0, z=0;
+            Vector3 newPosition = selectedObject1.transform.position;
+            x = newPosition.x; y = newPosition.y; z = newPosition.z;
+            if (Input.GetTouch(0).phase == TouchPhase.Began)
+            {
+                beginTouch = touch.position;
+                
+            }
+            else if (Input.GetTouch(0).phase == TouchPhase.Moved)
+            {
+                endTouch= touch.position;
+                float k = 100;
+                switch (3)
+                {
+                    case 1: // xy
+                        y += (endTouch.y-beginTouch.y)/k;
+                        x += (endTouch.x-beginTouch.x)/k;
+                        break;
+                    case 2: // yz
+                        y += (endTouch.y - beginTouch.y) / k;
+                        z += (endTouch.x - beginTouch.x) / k;
+                        break;
+
+                    case 3: // xz
+                        z = z + (endTouch.x - beginTouch.x) / k;
+                        x = x + (endTouch.y - beginTouch.y) / k;
+                        break;
+                }
+                Vector3 newPos = AddPointCoord(new Vector3(x, y, z), placementIndicator.transform);
+                selectedObject1.transform.position = new Vector3(newPos.x,newPos.y,newPos.z);
+            }
+        }
+    }
     // Start is called before the first frame update
     void Start()
     {
@@ -392,18 +459,25 @@ public class ARToPlaceObject : MonoBehaviour
         heightSliderButton.onClick.AddListener(UpYDefault);
         sizeSliderButton.onClick.AddListener(ScaleSliderObjectDefault);
         addObjectButtons[0].onClick.AddListener(AddFigureSquare);
+        xyzCoordsButtons[0].onClick.AddListener(XCoordsEnabled);
+        xyzCoordsButtons[1].onClick.AddListener(YCoordsEnabled);
+        xyzCoordsButtons[2].onClick.AddListener(ZCoordsEnabled);
         //buttons[0].onClick.AddListener(TFMovePlace);
         //buttons[1].onClick.AddListener(TFRotationPlace);
         defaultHeight = heightSlider.value;
         defaultScale = scaleSlider.value;
         UpYDefault();
         ScaleSliderObjectDefault();
+        foreach(var i in xyzCoordsButtons)
+            i.GetComponent<Image>().color= (xCoord) ? selectColor : defaultColor;
     }
     // Update is called once per frame
     void Update()
     {
-        UpdatePlacementPose();
+        //UpdatePlacementPose();
+        VisibleButton();
         RotateAndMovePlace();
+        MovePoint();
         //if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
         //    TFMovePlace();
         if (Input.touchCount == 2 && Input.GetTouch(0).phase == TouchPhase.Ended)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))

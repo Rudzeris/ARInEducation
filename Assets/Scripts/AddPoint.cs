@@ -119,8 +119,25 @@ public class AddPoint : MonoBehaviour
         button.onClick.AddListener(AddPointToPlace);
     }
     int buttonIndex;
+
+    public void VisibleButton()
+    {
+        string sx, sy, sz;
+        sx = coords[0].text.ToString();
+        sy = coords[1].text.ToString();
+        sz = coords[2].text.ToString();
+        sx = sx.Substring(0, sx.Length - 1);
+        sy = sy.Substring(0, sy.Length - 1);
+        sz = sz.Substring(0, sz.Length - 1);
+        float x = 0;
+        float y = 0;
+        float z = 0;
+        bool bx = (sx.Length > 0);
+        bool by = (sy.Length > 0);
+        bool bz = (sz.Length > 0);
+        gameObject.SetActive(bx & by & bz);
+    }
     void Update() 
     {
-
     }
 }
