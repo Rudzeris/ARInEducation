@@ -2,22 +2,23 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
-using UnityEngine.Experimental.XR;
+//using UnityEngine.Experimental.XR;
 using System;
-using UnityEngine.UI;
+//using UnityEngine.UI;
 using TMPro;
-using UnityEngine.UIElements;
+//using UnityEngine.UIElements;
 using Button = UnityEngine.UI.Button;
-using UnityEngine.XR.OpenXR.Input;
+//using UnityEngine.XR.OpenXR.Input;
 using Pose = UnityEngine.Pose;
-using UnityEngine.InputSystem.EnhancedTouch;
-using UnityEngine.EventSystems;
-using Unity.VisualScripting;
-using UnityEngine.Experimental.GlobalIllumination;
-using System.Drawing;
-using Microsoft.Unity.VisualStudio.Editor;
+//using UnityEngine.InputSystem.EnhancedTouch;
+//using UnityEngine.EventSystems;
+//using Unity.VisualScripting;
+//using UnityEngine.Experimental.GlobalIllumination;
+//using System.Drawing;
+//using Microsoft.Unity.VisualStudio.Editor;
 using Image = UnityEngine.UI.Image;
 using Color = UnityEngine.Color;
+using UnityEngine.XR.OpenXR.Input;
 
 public class ARToPlaceObject : MonoBehaviour
 {
@@ -86,7 +87,7 @@ public class ARToPlaceObject : MonoBehaviour
         //pose = pose / defaultScale * scaleSlider.value;
         double rotation = -toPlaceTransform.eulerAngles.y;
         float x = 0;
-        x -= pose.x;
+        x += pose.x;
         float x1 = toPlaceTransform.transform.position.x;
         float z = 0;
         z += pose.z;
@@ -279,11 +280,13 @@ public class ARToPlaceObject : MonoBehaviour
     private Color selectColor = Color.red;
     private void RotateAndMovePlace()
     {
-        //if (placementActive) UpdatePlacementIndicator(); else UpY(); // move and Y
+        if (telephone) 
+            if (placementActive) UpdatePlacementIndicator();
+            else UpY(); // move and Y
         if (Input.touchCount > 0)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
-            if (selectedObject1 == null && xCoord && yCoord && zCoord)
+            if (selectedObject1 == null || xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord)
                 if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
                 {
                     yRotation = Quaternion.Euler(0f, -touch.deltaPosition.x * 0.1f, 0f);
@@ -300,7 +303,7 @@ public class ARToPlaceObject : MonoBehaviour
         {
             placementActive = !placementActive;
 
-            TMPro3.text = "Move: " + ((placementActive) ? "on" : "off");
+            //TMPro3.text = "Move: " + ((placementActive) ? "on" : "off");
         }
         lastClickTime = Time.time;
         //buttons[0].GetComponentInChildren<TextMeshProUGUI>().text = ((placementActive) ? ("Закрепить\nоси") : ("Передвинуть\nоси"));
@@ -390,7 +393,7 @@ public class ARToPlaceObject : MonoBehaviour
     }
 
     Vector2 beginTouch, endTouch;
-    bool xCoord=true, yCoord=true, zCoord=true;
+    bool xCoord = false, yCoord = false, zCoord = false;
     private void XCoordsEnabled()
     {
         xCoord = !xCoord;
@@ -399,50 +402,55 @@ public class ARToPlaceObject : MonoBehaviour
     private void YCoordsEnabled()
     {
         yCoord = !yCoord;
-        xyzCoordsButtons[1].GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
+        xyzCoordsButtons[1].GetComponent<Image>().color = (yCoord) ? selectColor : defaultColor;
     }
     private void ZCoordsEnabled()
     {
         zCoord = !zCoord;
-        xyzCoordsButtons[2].GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
+        xyzCoordsButtons[2].GetComponent<Image>().color = (zCoord) ? selectColor : defaultColor;
     }
     private void MovePoint()
     {
         if (selectedObject2 != null || selectedObject1 == null)
             return;
+        if (xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord) return;
         if (Input.touchCount == 1)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
-            float x=0, y=0, z=0;
+            float x = 0, y = 0, z = 0;
             Vector3 newPosition = selectedObject1.transform.position;
-            x = newPosition.x; y = newPosition.y; z = newPosition.z;
+            x = 0; y = 0; z = 0;
             if (Input.GetTouch(0).phase == TouchPhase.Began)
             {
                 beginTouch = touch.position;
-                
+
             }
             else if (Input.GetTouch(0).phase == TouchPhase.Moved)
             {
-                endTouch= touch.position;
-                float k = 100;
-                switch (3)
-                {
-                    case 1: // xy
-                        y += (endTouch.y-beginTouch.y)/k;
-                        x += (endTouch.x-beginTouch.x)/k;
-                        break;
-                    case 2: // yz
-                        y += (endTouch.y - beginTouch.y) / k;
-                        z += (endTouch.x - beginTouch.x) / k;
-                        break;
+                endTouch = touch.position;
+                float k = 2000;
+                if (xCoord && yCoord)
 
-                    case 3: // xz
-                        z = z + (endTouch.x - beginTouch.x) / k;
-                        x = x + (endTouch.y - beginTouch.y) / k;
-                        break;
+                { // xy
+                    y += (endTouch.y - beginTouch.y) / k;
+                    x += (endTouch.x - beginTouch.x) / k;
                 }
-                Vector3 newPos = AddPointCoord(new Vector3(x, y, z), placementIndicator.transform);
-                selectedObject1.transform.position = new Vector3(newPos.x,newPos.y,newPos.z);
+                else if (yCoord && zCoord)
+                {// yz
+
+                    y += (endTouch.y - beginTouch.y) / k;
+                    z += (endTouch.x - beginTouch.x) / k;
+                }
+                else if (zCoord && xCoord)
+                { // xz
+                    z += (endTouch.y - beginTouch.y) / k;
+                    x += (endTouch.x - beginTouch.x) / k;
+                }else if(xCoord) x += (endTouch.x - beginTouch.x) / k;
+                else if(yCoord) y += (endTouch.y - beginTouch.y) / k;
+                else if(zCoord) z += (endTouch.x - beginTouch.x) / k;
+
+                newPosition += AddPointCoord(new Vector3(x, y, z), placementIndicator.transform);
+                selectedObject1.transform.position = newPosition;
             }
         }
     }
@@ -468,13 +476,13 @@ public class ARToPlaceObject : MonoBehaviour
         defaultScale = scaleSlider.value;
         UpYDefault();
         ScaleSliderObjectDefault();
-        foreach(var i in xyzCoordsButtons)
-            i.GetComponent<Image>().color= (xCoord) ? selectColor : defaultColor;
+        foreach (var i in xyzCoordsButtons)
+            i.GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
     }
     // Update is called once per frame
     void Update()
     {
-        //UpdatePlacementPose();
+        if(telephone)UpdatePlacementPose();
         VisibleButton();
         RotateAndMovePlace();
         MovePoint();
@@ -483,7 +491,10 @@ public class ARToPlaceObject : MonoBehaviour
         if (Input.touchCount == 2 && Input.GetTouch(0).phase == TouchPhase.Ended)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))
             TFMovePlace();
         ScaleSliderObject();
-        TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
+        if (Points.Count > 0)
+        TMPro2.text = "X: " + Points[0].transform.localPosition.x.ToString() + ", Y: " + Points[0].transform.localPosition.y.ToString() + ", Z: " + Points[0].transform.localPosition.z.ToString();
+        //TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro1.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
     }
+    bool telephone = false;
 }
