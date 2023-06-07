@@ -91,6 +91,7 @@ public class AddPoint : MonoBehaviour
             ARToPlaceObject arToPlaceObject = FindObjectOfType<ARToPlaceObject>();
             if (arToPlaceObject != null)
             {
+                pose /= 50*5;
                 arToPlaceObject.SpawnObject(objectToSpawn,pose,new Quaternion(0f,0f,0f,0f));
             }
         }

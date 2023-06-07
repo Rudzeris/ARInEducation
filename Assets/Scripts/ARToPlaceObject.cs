@@ -63,6 +63,7 @@ public class ARToPlaceObject : MonoBehaviour
     private List<GameObject> selectedObject = new List<GameObject>();
     private List<GameObject> lines = new List<GameObject>();
     private List<GameObject> Points = new List<GameObject>();
+    private List<GameObject> planes = new List<GameObject>();
 
 
     [SerializeField] public TextMeshProUGUI TMPro1;
@@ -77,14 +78,14 @@ public class ARToPlaceObject : MonoBehaviour
         float q = 0, w = 0;
         foreach (var i in Points)
         {
-            if (Vector3.Distance(temp, i.transform.position) < eps / defaultScale * scaleSlider.value) return true;
+            if (Vector3.Distance(temp, i.transform.localPosition) < eps / defaultScale * scaleSlider.value) return true;
         }
         return false;
     }
 
     private Vector3 AddPointCoord(Vector3 pose, Transform toPlaceTransform)
     {
-        pose /= 50;
+        //pose /= 50;
         //pose = pose / defaultScale * scaleSlider.value;
         double rotation = -toPlaceTransform.eulerAngles.y;
         float x = 0;
@@ -108,13 +109,18 @@ public class ARToPlaceObject : MonoBehaviour
 
     public void SpawnObject(GameObject oToSpawn, Vector3 pose, Quaternion A)
     {
-        if (oToSpawn != null)
+        if (selectedObject.Count == 2)
+        {
+            pose = (selectedObject[0].transform.localPosition + selectedObject[1].transform.localPosition) /2;
+        }
+        if (oToSpawn != null && selectedObject.Count%2==0)
         {
             Transform toPlaceTransform = placementIndicator.transform;
-            pose = AddPointCoord(pose, toPlaceTransform);
+            //pose = AddPointCoord(pose, toPlaceTransform);
             if (!SearchObject(pose))
             {
                 GameObject newObject = Instantiate(oToSpawn, pose, A, toPlaceTransform);
+                newObject.transform.localPosition = pose;
                 Points.Add(newObject);
                 newObject.tag = "Point";
                 if (newObject.GetComponent<MeshRenderer>() == null)
@@ -146,15 +152,21 @@ public class ARToPlaceObject : MonoBehaviour
 
     private void ClearPoints()
     {
-        foreach (var i in Points)
-        {
-            Destroy(i);
-        }
-        Points.Clear();
         foreach (var i in lines)
         {
             Destroy(i);
         }
+        foreach (var i in Points)
+        {
+            Destroy(i);
+        }
+        foreach(var i in planes)
+        {
+            Destroy(i);
+        }
+        planes.Clear();
+        selectedObject.Clear();
+        Points.Clear();
         lines.Clear();
     }
 
@@ -330,7 +342,51 @@ public class ARToPlaceObject : MonoBehaviour
 
     private void CreatePlane(GameObject A, GameObject B, GameObject C)
     {
+        if (selectedObject.Count != 3)
+            return;
+        //Plane myPlane = new Plane(selectedObject[0].transform.position, selectedObject[1].transform.position, selectedObject[2].transform.position);
+        //GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
+        //plane.transform.position = myPlane.distance * myPlane.normal;
+        //plane.transform.LookAt((myPlane.distance + 1) * myPlane.normal);
+        //plane.transform.SetParent(placementIndicator.transform);
+        //plane.transform.localScale= Vector3.one/100;
+        //planes.Add(plane);
 
+        // Получаем позиции точек
+        Vector3 p1 = A.transform.localPosition;
+        Vector3 p2 = B.transform.localPosition;
+        Vector3 p3 = C.transform.localPosition;
+
+        //// Вычисляем нормаль плоскости, используя кросс-произведение векторов
+        //Vector3 planeNormal = Vector3.Cross(p2 - p1, p3 - p1).normalized;
+
+        //// Вычисляем смещение (d) плоскости
+        //float planeOffset = -Vector3.Dot(planeNormal, p1);
+
+        // Создаем плоскость с использованием MeshFilter и MeshRenderer
+        Plane planeObject = new Plane(p1,p2,p3);
+        //planeObject.transform.SetParent(placementIndicator.transform);
+        //MeshFilter meshFilter = planeObject.AddComponent<MeshFilter>();
+        //MeshRenderer meshRenderer = planeObject.AddComponent<MeshRenderer>();
+
+        //// Создаем меш плоскости
+        //Mesh mesh = new Mesh();
+        //mesh.vertices = new Vector3[] { p1, p2, p3, p1, p2, p3 };
+        //mesh.normals = new Vector3[] { planeNormal, planeNormal, planeNormal, -planeNormal, -planeNormal, -planeNormal };
+        //mesh.triangles = new int[] { 0, 1, 2, 3, 4, 5 };
+
+        //// Устанавливаем меш в MeshFilter
+        //meshFilter.mesh = mesh;
+
+        //// Создаем двусторонний материал
+        //Material material = new Material(Shader.Find("Unlit/Transparent"));
+        //material.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+        //meshRenderer.material = material;
+
+        //// Перемещаем плоскость в начало координат
+        //planeObject.transform.position = Vector3.zero;
+
+        
     }
 
     private Color defaultColor = Color.white;
@@ -403,7 +459,7 @@ public class ARToPlaceObject : MonoBehaviour
     private GameObject ReturnGameObject(ref GameObject temp, Vector3 V)
     {
         Quaternion t = new Quaternion(0f, 0f, 0f, 0f);
-        SpawnObject(temp, V, t);
+        SpawnObject(temp, V/250, t);
         return Points[Points.Count - 1];
     }
     //Стандартные фигуры
