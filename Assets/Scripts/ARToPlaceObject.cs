@@ -73,14 +73,14 @@ public class ARToPlaceObject : MonoBehaviour
     float defaultHeight = 1;
     float defaultScale = 1;
 
-    private bool SearchObject(Vector3 temp)
+    private int SearchObject(Vector3 temp)
     {
         float q = 0, w = 0;
-        foreach (var i in Points)
+        for (int i=0;i<Points.Count;i++)
         {
-            if (Vector3.Distance(temp, i.transform.localPosition) < eps / defaultScale * scaleSlider.value) return true;
+            if (Vector3.Distance(temp, Points[i].transform.localPosition) < eps / defaultScale * scaleSlider.value) return i;
         }
-        return false;
+        return -1;
     }
 
     private Vector3 AddPointCoord(Vector3 pose, Transform toPlaceTransform)
@@ -107,17 +107,17 @@ public class ARToPlaceObject : MonoBehaviour
         return pose;
     }
 
-    public void SpawnObject(GameObject oToSpawn, Vector3 pose, Quaternion A)
+    public GameObject SpawnObject(GameObject oToSpawn, Vector3 pose, Quaternion A)
     {
         if (selectedObject.Count == 2)
         {
-            pose = (selectedObject[0].transform.localPosition + selectedObject[1].transform.localPosition) /2;
+            pose = (selectedObject[0].transform.localPosition + selectedObject[1].transform.localPosition) / 2;
         }
-        if (oToSpawn != null && selectedObject.Count%2==0)
+        if (oToSpawn != null && selectedObject.Count % 2 == 0)
         {
             Transform toPlaceTransform = placementIndicator.transform;
             //pose = AddPointCoord(pose, toPlaceTransform);
-            if (!SearchObject(pose))
+            if (SearchObject(pose)==-1)
             {
                 GameObject newObject = Instantiate(oToSpawn, pose, A, toPlaceTransform);
                 newObject.transform.localPosition = pose;
@@ -132,9 +132,11 @@ public class ARToPlaceObject : MonoBehaviour
                 newObject.AddComponent<PointS>();
                 //newObject.transform.localScale = newObject.transform.localScale / defaultScale * scaleSlider.value;
                 //TMPro1.text = "X: " + globalPosition.x.ToString() + ", Y: " + globalPosition.y.ToString() + ", Z: " + globalPosition.z.ToString();
-
+                return newObject;
             }
+            return oToSpawn;
         }
+        return oToSpawn;
     }
 
     private void DeletePoint()
@@ -160,7 +162,7 @@ public class ARToPlaceObject : MonoBehaviour
         {
             Destroy(i);
         }
-        foreach(var i in planes)
+        foreach (var i in planes)
         {
             Destroy(i);
         }
@@ -170,14 +172,14 @@ public class ARToPlaceObject : MonoBehaviour
         lines.Clear();
     }
 
-    private void ClearSelectedObject(int x=0)
+    private void ClearSelectedObject(int x = 0)
     {
         for (int i = x; i < selectedObject.Count; i++)
         {
             selectedObject[i].GetComponent<Renderer>().material.color = defaultColor;
         }
-        if(selectedObject.Count !=0)
-            selectedObject.RemoveRange(x,selectedObject.Count-x);
+        if (selectedObject.Count != 0)
+            selectedObject.RemoveRange(x, selectedObject.Count - x);
     }
 
     private int SearchSelectedObject(GameObject temp)
@@ -364,7 +366,7 @@ public class ARToPlaceObject : MonoBehaviour
         //float planeOffset = -Vector3.Dot(planeNormal, p1);
 
         // Создаем плоскость с использованием MeshFilter и MeshRenderer
-        Plane planeObject = new Plane(p1,p2,p3);
+        Plane planeObject = new Plane(p1, p2, p3);
         //planeObject.transform.SetParent(placementIndicator.transform);
         //MeshFilter meshFilter = planeObject.AddComponent<MeshFilter>();
         //MeshRenderer meshRenderer = planeObject.AddComponent<MeshRenderer>();
@@ -386,7 +388,7 @@ public class ARToPlaceObject : MonoBehaviour
         //// Перемещаем плоскость в начало координат
         //planeObject.transform.position = Vector3.zero;
 
-        
+
     }
 
     private Color defaultColor = Color.white;
@@ -457,10 +459,8 @@ public class ARToPlaceObject : MonoBehaviour
     }
 
     private GameObject ReturnGameObject(ref GameObject temp, Vector3 V)
-    {
-        Quaternion t = new Quaternion(0f, 0f, 0f, 0f);
-        SpawnObject(temp, V/250, t);
-        return Points[Points.Count - 1];
+    {        
+        return SpawnObject(temp, V / 250, new Quaternion(0f, 0f, 0f, 0f));
     }
     //Стандартные фигуры
     private void AddFigureSquare()
@@ -516,6 +516,7 @@ public class ARToPlaceObject : MonoBehaviour
         zCoord = !zCoord;
         xyzCoordsButtons[2].GetComponent<Image>().color = (zCoord) ? selectColor : defaultColor;
     }
+    Vector3 tempMove;
     private void MovePoint()
     {
         if (selectedObject.Count == 0 || selectedObject.Count > 1)
@@ -525,40 +526,36 @@ public class ARToPlaceObject : MonoBehaviour
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
             float x = 0, y = 0, z = 0;
-            if (Input.GetTouch(0).phase == TouchPhase.Began || Input.GetTouch(0).phase == TouchPhase.Ended)
+            if (Input.GetTouch(0).phase == TouchPhase.Began)
             {
+                tempMove = selectedObject[0].transform.localPosition;
                 beginTouch = touch.position;
-
             }
             else if (Input.GetTouch(0).phase == TouchPhase.Moved)
             {
-                Vector3 newPosition = selectedObject[0].transform.localPosition;
                 endTouch = touch.position;
-                float k = 2000;
-                x = 0; y = 0; z = 0;
+                float k = 10000;
                 if (xCoord && yCoord)
 
                 { // xy
-                    y += (endTouch.y - beginTouch.y) / k;
-                    x += (endTouch.x - beginTouch.x) / k;
+                    y = (endTouch.y - beginTouch.y) / k;
+                    x = (endTouch.x - beginTouch.x) / k;
                 }
                 else if (yCoord && zCoord)
                 {// yz
 
-                    y += (endTouch.y - beginTouch.y) / k;
-                    z += (endTouch.x - beginTouch.x) / k;
+                    y = (endTouch.y - beginTouch.y) / k;
+                    z = (endTouch.x - beginTouch.x) / k;
                 }
                 else if (zCoord && xCoord)
                 { // xz
-                    z += (endTouch.y - beginTouch.y) / k;
-                    x += (endTouch.x - beginTouch.x) / k;
+                    z = (endTouch.y - beginTouch.y) / k;
+                    x = (endTouch.x - beginTouch.x) / k;
                 }
-                else if (xCoord) x += (endTouch.x - beginTouch.x) / k;
-                else if (yCoord) y += (endTouch.y - beginTouch.y) / k;
-                else if (zCoord) z += (endTouch.x - beginTouch.x) / k;
-
-                newPosition = AddPointCoord(new Vector3(x + newPosition.x * 50, y + newPosition.y * 50, z + newPosition.z * 50), placementIndicator.transform);
-                selectedObject[0].transform.position = newPosition;
+                else if (xCoord) x = (endTouch.x - beginTouch.x) / k;
+                else if (yCoord) y = (endTouch.y - beginTouch.y) / k;
+                else if (zCoord) z = (endTouch.x - beginTouch.x) / k;
+                selectedObject[0].transform.localPosition=tempMove+new Vector3(x,y,z);
             }
         }
     }
@@ -573,11 +570,22 @@ public class ARToPlaceObject : MonoBehaviour
     {
         bool aLPB = selectedObject.Count >= 2;
         addLinePlaneButton.gameObject.SetActive(aLPB);
-        addLinePlaneButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count<=2) ? ("Add Line") : ("Add Plane");
-        destroyPointButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count<=1) ? ("Delete Point") : ("Clear select");
+        addLinePlaneButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count <= 2) ? ("Add Line") : ("Add Plane");
+        destroyPointButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count <= 1) ? ("Delete Point") : ("Clear select");
         destroyPointButton.gameObject.SetActive(selectedObject.Count >= 1);
 
         deletePointsButton.gameObject.SetActive(Points.Count > 0);
+    }
+
+    private void EmptyF()
+    {
+        if (Input.touchCount == 1)
+            if (Input.GetTouch(0).phase == TouchPhase.Began)
+                TMPro3.text = "Began";
+            else if (Input.GetTouch(0).phase == TouchPhase.Moved)
+                TMPro3.text = "Moved";
+            else if (Input.GetTouch(0).phase == TouchPhase.Ended)
+                TMPro3.text = "Ended";
     }
     // Start is called before the first frame update
     void Start()
@@ -605,6 +613,7 @@ public class ARToPlaceObject : MonoBehaviour
         foreach (var i in xyzCoordsButtons)
             i.GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
         MaxSelectedButton.GetComponentInChildren<TextMeshProUGUI>().text = "x" + maxSelectedObject.ToString();
+        telephone = SystemInfo.deviceType == DeviceType.Handheld;
     }
     // Update is called once per frame
     void Update()
@@ -626,5 +635,5 @@ public class ARToPlaceObject : MonoBehaviour
         //TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro1.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
     }
-    bool telephone = false;
+    bool telephone = true;
 }
