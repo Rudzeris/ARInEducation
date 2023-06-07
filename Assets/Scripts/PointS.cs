@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing.Printing;
 using UnityEngine;
 
 public class PointS : MonoBehaviour
@@ -10,10 +11,16 @@ public class PointS : MonoBehaviour
         ARToPlaceObject artpo = FindObjectOfType<ARToPlaceObject>();
         foreach (var i in lines)
         {
-            artpo.deleteLine(i.gameObject);
-            Destroy(i.gameObject);
+            if (i != null)
+            {
+                artpo.deleteLine(i.gameObject);
+                Destroy(i.gameObject);
+            }
         }
         artpo.deletePoint(gameObject);
         Destroy(gameObject);
+    }
+    public void removeLine(GameObject temp) { 
+        lines.Remove(temp);
     }
 }

@@ -40,7 +40,8 @@ public class Line : MonoBehaviour
     }
     public void OnDestroy()
     {
-        
+        if(startPoint)startPoint.GetComponent<PointS>().removeLine(gameObject);
+        if(endPoint)endPoint.GetComponent<PointS>().removeLine(gameObject);
     }
     // Start is called before the first frame update
     void Start()

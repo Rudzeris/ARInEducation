@@ -32,7 +32,8 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public Button destroyPointButton;
     [SerializeField] public Button showPointsButton;
     [SerializeField] public Button showVectorsButton;
-    [SerializeField] public Button addLineButton;
+    [SerializeField] public Button addLinePlaneButton;
+    [SerializeField] public Button MaxSelectedButton;
     [SerializeField] public Button[] addObjectButtons;
     [SerializeField] public Button[] xyzCoordsButtons;
     [SerializeField] public UnityEngine.UI.Slider heightSlider;
@@ -58,8 +59,8 @@ public class ARToPlaceObject : MonoBehaviour
 
     private Quaternion yRotation;
 
-    private GameObject selectedObject1;
-    private GameObject selectedObject2;
+    short maxSelectedObject = 1;
+    private List<GameObject> selectedObject = new List<GameObject>();
     private List<GameObject> lines = new List<GameObject>();
     private List<GameObject> Points = new List<GameObject>();
 
@@ -132,9 +133,14 @@ public class ARToPlaceObject : MonoBehaviour
 
     private void DeletePoint()
     {
-        if (selectedObject1 != null && selectedObject2 == null)
+        if (selectedObject.Count == 1)
         {
-            Destroy(selectedObject1);
+            Destroy(selectedObject[0]);
+            selectedObject.Clear();
+        }
+        else
+        {
+            ClearSelectedObject();
         }
     }
 
@@ -152,32 +158,75 @@ public class ARToPlaceObject : MonoBehaviour
         lines.Clear();
     }
 
+    private void ClearSelectedObject(int x=0)
+    {
+        for (int i = x; i < selectedObject.Count; i++)
+        {
+            selectedObject[i].GetComponent<Renderer>().material.color = defaultColor;
+        }
+        if(selectedObject.Count !=0)
+            selectedObject.RemoveRange(x,selectedObject.Count-x);
+    }
+
+    private int SearchSelectedObject(GameObject temp)
+    {
+        for (int i = 0; i < selectedObject.Count; i++)
+        {
+            if (selectedObject[i] == temp) return i;
+        }
+        return -1;
+    }
+
+
     public void AddPointSelect(GameObject temp)
     {
         if (temp == null) return;
 
-        if (selectedObject1 == temp || selectedObject2 == temp)
+        int i = SearchSelectedObject(temp);
+        if (i >= 0)
         {
-            if (selectedObject2 == temp)
+            selectedObject[i].GetComponent<Renderer>().material.color = defaultColor;
+            selectedObject.RemoveAt(i);
+        }
+        else
+        {
+            if (selectedObject.Count == maxSelectedObject)
             {
-                selectedObject2.GetComponent<Renderer>().material.color = defaultColor;
-                selectedObject2 = null;
+                selectedObject[0].GetComponent<Renderer>().material.color = defaultColor;
+                selectedObject.RemoveAt(0);
+            }
+            temp.GetComponent<Renderer>().material.color = selectColor;
+            selectedObject.Add(temp);
+
+        }
+        /*if (selectedObject[0] == temp || selectedObject[1] == temp || selectedObject[2] == temp)
+        {
+            if (selectedObject[2] == temp)
+            {
+                selectedObject[2].GetComponent<Renderer>().material.color = defaultColor;
+                selectedObject[2] = null;
+            }
+            else if (selectedObject[1] == temp)
+            {
+                selectedObject[1].GetComponent<Renderer>().material.color = defaultColor;
+                selectedObject[1] = null;
             }
             else
             {
-                selectedObject1.GetComponent<Renderer>().material.color = defaultColor;
-                selectedObject1 = selectedObject2;
-                selectedObject2 = null;
+                selectedObject[0].GetComponent<Renderer>().material.color = defaultColor;
+                selectedObject[0] = selectedObject[1];
+                selectedObject[1] = null;
             }
         }
         else
         {
-            if (selectedObject2 != null)
-                selectedObject2.GetComponent<Renderer>().material.color = defaultColor;
-            selectedObject2 = selectedObject1;
-            selectedObject1 = temp;
-            selectedObject1.GetComponent<Renderer>().material.color = selectColor;
-        }
+            if ()
+                if (selectedObject[1] != null)
+                    selectedObject[1].GetComponent<Renderer>().material.color = defaultColor;
+            selectedObject[1] = selectedObject[0];
+            selectedObject[0] = temp;
+            selectedObject[0].GetComponent<Renderer>().material.color = selectColor;
+        }*/
     }
 
     private void UpdatePlacementPose()
@@ -232,9 +281,13 @@ public class ARToPlaceObject : MonoBehaviour
     {
         Points.Remove(temp);
     }
-    private void CreateLine()
+    private void CreateLinePlane()
     {
-        CreateLine(selectedObject1, selectedObject2);
+        if (selectedObject.Count == 2)
+            CreateLine(selectedObject[0], selectedObject[1]);
+        else if (selectedObject.Count == 3)
+            CreatePlane(selectedObject[0], selectedObject[1], selectedObject[2]);
+
     }
     private bool SearchLine(ref GameObject selectedObject1, ref GameObject selectedObject2)
     {
@@ -275,18 +328,22 @@ public class ARToPlaceObject : MonoBehaviour
         }
     }
 
+    private void CreatePlane(GameObject A, GameObject B, GameObject C)
+    {
+
+    }
 
     private Color defaultColor = Color.white;
     private Color selectColor = Color.red;
     private void RotateAndMovePlace()
     {
-        if (telephone) 
+        if (telephone)
             if (placementActive) UpdatePlacementIndicator();
             else UpY(); // move and Y
         if (Input.touchCount > 0)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
-            if (selectedObject1 == null || xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord)
+            if (selectedObject.Count == 0 || xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord)
                 if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
                 {
                     yRotation = Quaternion.Euler(0f, -touch.deltaPosition.x * 0.1f, 0f);
@@ -385,12 +442,6 @@ public class ARToPlaceObject : MonoBehaviour
         CreateLine(A2, B2); CreateLine(B2, C2); CreateLine(C2, D2); CreateLine(D2, A2);
 
     }
-    private void VisibleButton()
-    {
-        addLineButton.gameObject.SetActive(selectedObject1 != null && selectedObject2 != null);
-        destroyPointButton.gameObject.SetActive(selectedObject1 != null && selectedObject2 == null);
-        deletePointsButton.gameObject.SetActive(Points.Count > 0);
-    }
 
     Vector2 beginTouch, endTouch;
     bool xCoord = false, yCoord = false, zCoord = false;
@@ -411,24 +462,24 @@ public class ARToPlaceObject : MonoBehaviour
     }
     private void MovePoint()
     {
-        if (selectedObject2 != null || selectedObject1 == null)
+        if (selectedObject.Count == 0 || selectedObject.Count > 1)
             return;
         if (xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord) return;
         if (Input.touchCount == 1)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
             float x = 0, y = 0, z = 0;
-            Vector3 newPosition = selectedObject1.transform.position;
-            x = 0; y = 0; z = 0;
-            if (Input.GetTouch(0).phase == TouchPhase.Began)
+            if (Input.GetTouch(0).phase == TouchPhase.Began || Input.GetTouch(0).phase == TouchPhase.Ended)
             {
                 beginTouch = touch.position;
 
             }
             else if (Input.GetTouch(0).phase == TouchPhase.Moved)
             {
+                Vector3 newPosition = selectedObject[0].transform.localPosition;
                 endTouch = touch.position;
                 float k = 2000;
+                x = 0; y = 0; z = 0;
                 if (xCoord && yCoord)
 
                 { // xy
@@ -445,14 +496,32 @@ public class ARToPlaceObject : MonoBehaviour
                 { // xz
                     z += (endTouch.y - beginTouch.y) / k;
                     x += (endTouch.x - beginTouch.x) / k;
-                }else if(xCoord) x += (endTouch.x - beginTouch.x) / k;
-                else if(yCoord) y += (endTouch.y - beginTouch.y) / k;
-                else if(zCoord) z += (endTouch.x - beginTouch.x) / k;
+                }
+                else if (xCoord) x += (endTouch.x - beginTouch.x) / k;
+                else if (yCoord) y += (endTouch.y - beginTouch.y) / k;
+                else if (zCoord) z += (endTouch.x - beginTouch.x) / k;
 
-                newPosition += AddPointCoord(new Vector3(x, y, z), placementIndicator.transform);
-                selectedObject1.transform.position = newPosition;
+                newPosition = AddPointCoord(new Vector3(x + newPosition.x * 50, y + newPosition.y * 50, z + newPosition.z * 50), placementIndicator.transform);
+                selectedObject[0].transform.position = newPosition;
             }
         }
+    }
+    private void CountSelectedObject()
+    {
+        maxSelectedObject = (short)((maxSelectedObject) % 3 + 1);
+        MaxSelectedButton.GetComponentInChildren<TextMeshProUGUI>().text = "x" + maxSelectedObject.ToString();
+        if (maxSelectedObject == 1)
+            ClearSelectedObject(maxSelectedObject);
+    }
+    private void VisibleButton()
+    {
+        bool aLPB = selectedObject.Count >= 2;
+        addLinePlaneButton.gameObject.SetActive(aLPB);
+        addLinePlaneButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count<=2) ? ("Add Line") : ("Add Plane");
+        destroyPointButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count<=1) ? ("Delete Point") : ("Clear select");
+        destroyPointButton.gameObject.SetActive(selectedObject.Count >= 1);
+
+        deletePointsButton.gameObject.SetActive(Points.Count > 0);
     }
     // Start is called before the first frame update
     void Start()
@@ -463,13 +532,14 @@ public class ARToPlaceObject : MonoBehaviour
         destroyPointButton.onClick.AddListener(DeletePoint);
         showPointsButton.onClick.AddListener(ShowPoints);
         showVectorsButton.onClick.AddListener(ShowVectors);
-        addLineButton.onClick.AddListener(CreateLine);
+        addLinePlaneButton.onClick.AddListener(CreateLinePlane);
         heightSliderButton.onClick.AddListener(UpYDefault);
         sizeSliderButton.onClick.AddListener(ScaleSliderObjectDefault);
         addObjectButtons[0].onClick.AddListener(AddFigureSquare);
         xyzCoordsButtons[0].onClick.AddListener(XCoordsEnabled);
         xyzCoordsButtons[1].onClick.AddListener(YCoordsEnabled);
         xyzCoordsButtons[2].onClick.AddListener(ZCoordsEnabled);
+        MaxSelectedButton.onClick.AddListener(CountSelectedObject);
         //buttons[0].onClick.AddListener(TFMovePlace);
         //buttons[1].onClick.AddListener(TFRotationPlace);
         defaultHeight = heightSlider.value;
@@ -478,11 +548,12 @@ public class ARToPlaceObject : MonoBehaviour
         ScaleSliderObjectDefault();
         foreach (var i in xyzCoordsButtons)
             i.GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
+        MaxSelectedButton.GetComponentInChildren<TextMeshProUGUI>().text = "x" + maxSelectedObject.ToString();
     }
     // Update is called once per frame
     void Update()
     {
-        if(telephone)UpdatePlacementPose();
+        if (telephone) UpdatePlacementPose();
         VisibleButton();
         RotateAndMovePlace();
         MovePoint();
@@ -492,7 +563,10 @@ public class ARToPlaceObject : MonoBehaviour
             TFMovePlace();
         ScaleSliderObject();
         if (Points.Count > 0)
-        TMPro2.text = "X: " + Points[0].transform.localPosition.x.ToString() + ", Y: " + Points[0].transform.localPosition.y.ToString() + ", Z: " + Points[0].transform.localPosition.z.ToString();
+        {
+            TMPro1.text = "X: " + Points[0].transform.position.x.ToString() + ", Y: " + Points[0].transform.position.y.ToString() + ", Z: " + Points[0].transform.position.z.ToString();
+            TMPro2.text = "X: " + Points[0].transform.localPosition.x.ToString() + ", Y: " + Points[0].transform.localPosition.y.ToString() + ", Z: " + Points[0].transform.localPosition.z.ToString();
+        }
         //TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro1.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
     }
