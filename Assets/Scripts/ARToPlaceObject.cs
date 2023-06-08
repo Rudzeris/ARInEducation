@@ -130,6 +130,11 @@ public class ARToPlaceObject : MonoBehaviour
                 newObject.GetComponent<MeshRenderer>().enabled = PointsEnabled;
                 TMPro1.text = "X: " + pose.x.ToString() + ", Y: " + pose.y.ToString() + ", Z: " + pose.z.ToString();
                 newObject.AddComponent<PointS>();
+                if(selectedObject.Count == 2)
+                {
+                    PointS ps = newObject.GetComponent<PointS>();
+                    ps.setLineCoords(selectedObject[0], selectedObject[1]);
+                }
                 //newObject.transform.localScale = newObject.transform.localScale / defaultScale * scaleSlider.value;
                 //TMPro1.text = "X: " + globalPosition.x.ToString() + ", Y: " + globalPosition.y.ToString() + ", Z: " + globalPosition.z.ToString();
                 return newObject;
@@ -174,12 +179,12 @@ public class ARToPlaceObject : MonoBehaviour
 
     private void ClearSelectedObject(int x = 0)
     {
-        for (int i = x; i < selectedObject.Count; i++)
+        for (int i = 0; i < selectedObject.Count-x; i++)
         {
             selectedObject[i].GetComponent<Renderer>().material.color = defaultColor;
         }
         if (selectedObject.Count != 0)
-            selectedObject.RemoveRange(x, selectedObject.Count - x);
+            selectedObject.RemoveRange(0, selectedObject.Count - x);
     }
 
     private int SearchSelectedObject(GameObject temp)
@@ -355,40 +360,52 @@ public class ARToPlaceObject : MonoBehaviour
         //planes.Add(plane);
 
         // Получаем позиции точек
-        Vector3 p1 = A.transform.localPosition;
-        Vector3 p2 = B.transform.localPosition;
-        Vector3 p3 = C.transform.localPosition;
+        Vector3 pointA = A.transform.position;
+        Vector3 pointB = B.transform.position;
+        Vector3 pointC = C.transform.position;
 
-        //// Вычисляем нормаль плоскости, используя кросс-произведение векторов
-        //Vector3 planeNormal = Vector3.Cross(p2 - p1, p3 - p1).normalized;
+        // Создаем четырехугольную плоскость
+        GameObject quadPlane = new GameObject("QuadPlane");
+        MeshFilter meshFilter = quadPlane.AddComponent<MeshFilter>();
+        MeshRenderer meshRenderer = quadPlane.AddComponent<MeshRenderer>();
 
-        //// Вычисляем смещение (d) плоскости
-        //float planeOffset = -Vector3.Dot(planeNormal, p1);
+        // Создаем вершины четырехугольника
+        Vector3[] vertices = new Vector3[4];
+        vertices[0] = pointA;
+        vertices[1] = pointB;
+        vertices[2] = pointC;
+        vertices[3] = (pointA + pointC) / 2f; // Четвертая вершина - среднее значение точек A и C
 
-        // Создаем плоскость с использованием MeshFilter и MeshRenderer
-        Plane planeObject = new Plane(p1, p2, p3);
-        //planeObject.transform.SetParent(placementIndicator.transform);
-        //MeshFilter meshFilter = planeObject.AddComponent<MeshFilter>();
-        //MeshRenderer meshRenderer = planeObject.AddComponent<MeshRenderer>();
+        // Создаем треугольники
+        int[] triangles = new int[6];
+        triangles[0] = 0;
+        triangles[1] = 1;
+        triangles[2] = 2;
+        triangles[3] = 0;
+        triangles[4] = 2;
+        triangles[5] = 3;
 
-        //// Создаем меш плоскости
-        //Mesh mesh = new Mesh();
-        //mesh.vertices = new Vector3[] { p1, p2, p3, p1, p2, p3 };
-        //mesh.normals = new Vector3[] { planeNormal, planeNormal, planeNormal, -planeNormal, -planeNormal, -planeNormal };
-        //mesh.triangles = new int[] { 0, 1, 2, 3, 4, 5 };
+        // Создаем нормали для вершин
+        Vector3[] normals = new Vector3[4];
+        normals[0] = Vector3.up;
+        normals[1] = Vector3.up;
+        normals[2] = Vector3.up;
+        normals[3] = Vector3.up;
 
-        //// Устанавливаем меш в MeshFilter
-        //meshFilter.mesh = mesh;
+        // Создаем UV-координаты
+        Vector2[] uv = new Vector2[4];
+        uv[0] = new Vector2(0, 0);
+        uv[1] = new Vector2(1, 0);
+        uv[2] = new Vector2(1, 1);
+        uv[3] = new Vector2(0, 1);
 
-        //// Создаем двусторонний материал
-        //Material material = new Material(Shader.Find("Unlit/Transparent"));
-        //material.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-        //meshRenderer.material = material;
-
-        //// Перемещаем плоскость в начало координат
-        //planeObject.transform.position = Vector3.zero;
-
-
+        // Создаем меш и применяем его к фильтру меша
+        Mesh mesh = new Mesh();
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
+        mesh.normals = normals;
+        mesh.uv = uv;
+        meshFilter.mesh = mesh;
     }
 
     private Color defaultColor = Color.white;
@@ -555,7 +572,8 @@ public class ARToPlaceObject : MonoBehaviour
                 else if (xCoord) x = (endTouch.x - beginTouch.x) / k;
                 else if (yCoord) y = (endTouch.y - beginTouch.y) / k;
                 else if (zCoord) z = (endTouch.x - beginTouch.x) / k;
-                selectedObject[0].transform.localPosition=tempMove+new Vector3(x,y,z);
+                if(selectedObject[0].GetComponent<PointS>().GetLines()) selectedObject[0].GetComponent<PointS>().Moved(tempMove, new Vector3(x, y, z));
+                else selectedObject[0].transform.localPosition=tempMove+new Vector3(x,y,z);
             }
         }
     }
@@ -627,10 +645,10 @@ public class ARToPlaceObject : MonoBehaviour
         if (Input.touchCount == 2 && Input.GetTouch(0).phase == TouchPhase.Ended)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))
             TFMovePlace();
         ScaleSliderObject();
-        if (Points.Count > 0)
+        if (selectedObject.Count > 0)
         {
-            TMPro1.text = "X: " + Points[0].transform.position.x.ToString() + ", Y: " + Points[0].transform.position.y.ToString() + ", Z: " + Points[0].transform.position.z.ToString();
-            TMPro2.text = "X: " + Points[0].transform.localPosition.x.ToString() + ", Y: " + Points[0].transform.localPosition.y.ToString() + ", Z: " + Points[0].transform.localPosition.z.ToString();
+            TMPro1.text = "X: " + selectedObject[0].transform.localPosition.x.ToString() + ", Y: " + selectedObject[0].transform.localPosition.y.ToString() + ", Z: " + selectedObject[0].transform.localPosition.z.ToString();
+            if(selectedObject.Count>1)TMPro2.text = "X: " + selectedObject[1].transform.localPosition.x.ToString() + ", Y: " + selectedObject[1].transform.localPosition.y.ToString() + ", Z: " + selectedObject[1].transform.localPosition.z.ToString();
         }
         //TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro1.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();
