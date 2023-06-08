@@ -448,7 +448,7 @@ public class ARToPlaceObject : MonoBehaviour
         if (telephone)
             if (placementActive) UpdatePlacementIndicator();
             else UpY(); // move and Y
-        if (Input.touchCount ==2)
+        if (Input.touchCount == 1)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
             if (selectedObject.Count == 0 || xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord)
