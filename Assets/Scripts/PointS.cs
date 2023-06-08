@@ -67,7 +67,7 @@ public class PointS : MonoBehaviour
     {
         return PA && PB;
     }
-    public void setLineCoords(GameObject pointA, GameObject pointB)
+    public void setLineCoords(ref GameObject pointA, ref GameObject pointB)
     {
         // ¬ычисл€ем разницу между координатами точек A и B
         this.PA = pointA;

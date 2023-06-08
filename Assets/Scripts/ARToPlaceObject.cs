@@ -139,7 +139,9 @@ public class ARToPlaceObject : MonoBehaviour
                 if (selectedObject.Count == 2)
                 {
                     PointS ps = newObject.GetComponent<PointS>();
-                    ps.setLineCoords(selectedObject[0], selectedObject[1]);
+                    GameObject A1 = selectedObject[0];
+                    GameObject A2 = selectedObject[1];
+                    ps.setLineCoords(ref A1, ref A2);
                 }
                 //newObject.transform.localScale = newObject.transform.localScale / defaultScale * scaleSlider.value;
                 //TMPro1.text = "X: " + globalPosition.x.ToString() + ", Y: " + globalPosition.y.ToString() + ", Z: " + globalPosition.z.ToString();
@@ -322,11 +324,28 @@ public class ARToPlaceObject : MonoBehaviour
         }
         return false;
     }
+    private bool RemoveLine(GameObject selectedObject1 = null, GameObject selectedObject2 = null)
+    {
+        if (selectedObject1 != null && selectedObject2 != null)
+        {
+            PointS pSO1 = selectedObject1.GetComponent<PointS>();
+            foreach (var x in pSO1.lines)
+                if (x.GetComponent<Line>().startPoint == selectedObject2 || selectedObject2 == x.GetComponent<Line>().endPoint)
+                {
+                    Destroy(x);
+                    return true;
+                }
+            
+        }
+        return false;
+    }
     private void CreateLine(GameObject selectedObject1 = null, GameObject selectedObject2 = null)
     {
         if (selectedObject1 != null && selectedObject2 != null)
         {
-            if (!SearchLine(ref selectedObject1, ref selectedObject2)) return;
+            if (!SearchLine(ref selectedObject1, ref selectedObject2)) 
+                if (RemoveLine(selectedObject1, selectedObject2)) 
+                    return;
             GameObject lineObject = new GameObject("Line");
 
             Line line = lineObject.AddComponent<Line>();
@@ -340,6 +359,7 @@ public class ARToPlaceObject : MonoBehaviour
             pointScript1.lines.Add(lineObject);
             pointScript2.lines.Add(lineObject);
 
+            line.lineWidth = 0.001f * scaleSlider.value;
             line.CreateLine();
             line.UpdateLine();
 
@@ -428,11 +448,11 @@ public class ARToPlaceObject : MonoBehaviour
         if (telephone)
             if (placementActive) UpdatePlacementIndicator();
             else UpY(); // move and Y
-        if (Input.touchCount > 0)
+        if (Input.touchCount ==2)
         {
             UnityEngine.Touch touch = Input.GetTouch(0);
             if (selectedObject.Count == 0 || xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord)
-                if (touch.phase == TouchPhase.Moved && Input.touchCount == 1)
+                if (touch.phase == TouchPhase.Moved)
                 {
                     yRotation = Quaternion.Euler(0f, -touch.deltaPosition.x * 0.1f, 0f);
                     placementIndicator.transform.rotation *= yRotation;
@@ -440,17 +460,15 @@ public class ARToPlaceObject : MonoBehaviour
         }
     }
 
-    public float doubleClickTime = 0.3f;
-    private float lastClickTime;
+   
     private void TFMovePlace()
     {
-        if (Time.time - lastClickTime < doubleClickTime)
-        {
-            placementActive = !placementActive;
+        if (Input.GetTouch(0).phase == TouchPhase.Began)
+            placementActive = true;
+        else if(Input.GetTouch(0).phase==TouchPhase.Ended) 
+            placementActive = false;
 
             //TMPro3.text = "Move: " + ((placementActive) ? "on" : "off");
-        }
-        lastClickTime = Time.time;
         //buttons[0].GetComponentInChildren<TextMeshProUGUI>().text = ((placementActive) ? ("Закрепить\nоси") : ("Передвинуть\nоси"));
     }
 
@@ -660,7 +678,7 @@ public class ARToPlaceObject : MonoBehaviour
         foreach (var i in xyzCoordsButtons)
             i.GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
         MaxSelectedButton.GetComponentInChildren<TextMeshProUGUI>().text = "x" + maxSelectedObject.ToString();
-        telephone = SystemInfo.deviceType == DeviceType.Handheld;
+        telephone = SystemInfo.deviceType == DeviceType.Handheld; // Определяет устройство
     }
     // Update is called once per frame
     void Update()
@@ -671,13 +689,13 @@ public class ARToPlaceObject : MonoBehaviour
         MovePoint();
         //if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
         //    TFMovePlace();
-        if (Input.touchCount == 2 && Input.GetTouch(0).phase == TouchPhase.Ended)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))
+        if (Input.touchCount == 2)// && !EventSystem.current.IsPointerOverGameObject(Input.GetTouch(0).fingerId))
             TFMovePlace();
         ScaleSliderObject();
         if (selectedObject.Count > 0)
         {
-            TMPro1.text = "X: " + selectedObject[0].transform.localPosition.x.ToString() + ", Y: " + selectedObject[0].transform.localPosition.y.ToString() + ", Z: " + selectedObject[0].transform.localPosition.z.ToString();
-            if (selectedObject.Count > 1) TMPro2.text = "X: " + selectedObject[1].transform.localPosition.x.ToString() + ", Y: " + selectedObject[1].transform.localPosition.y.ToString() + ", Z: " + selectedObject[1].transform.localPosition.z.ToString();
+            //TMPro1.text = "X: " + selectedObject[0].transform.localPosition.x.ToString() + ", Y: " + selectedObject[0].transform.localPosition.y.ToString() + ", Z: " + selectedObject[0].transform.localPosition.z.ToString();
+            //if (selectedObject.Count > 1) TMPro2.text = "X: " + selectedObject[1].transform.localPosition.x.ToString() + ", Y: " + selectedObject[1].transform.localPosition.y.ToString() + ", Z: " + selectedObject[1].transform.localPosition.z.ToString();
         }
         //TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro1.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();

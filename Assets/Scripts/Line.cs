@@ -9,7 +9,7 @@ public class Line : MonoBehaviour
 
     public GameObject startPoint; // Начальная точка линии
     public GameObject endPoint; // Конечная точка линии
-    public float lineWidth = 0.001f; // Толщина линии
+    public float lineWidth = 0.01f; // Толщина линии
     public Color lineColor = Color.white; // Цвет линии
     public Material lineMaterial;
     private LineRenderer lineRenderer;
