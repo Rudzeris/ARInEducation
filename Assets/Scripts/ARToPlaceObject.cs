@@ -19,6 +19,8 @@ using Pose = UnityEngine.Pose;
 using Image = UnityEngine.UI.Image;
 using Color = UnityEngine.Color;
 using UnityEngine.XR.OpenXR.Input;
+using Unity.VisualScripting;
+using System.Linq;
 
 public class ARToPlaceObject : MonoBehaviour
 {
@@ -76,7 +78,7 @@ public class ARToPlaceObject : MonoBehaviour
     private int SearchObject(Vector3 temp)
     {
         float q = 0, w = 0;
-        for (int i=0;i<Points.Count;i++)
+        for (int i = 0; i < Points.Count; i++)
         {
             if (Vector3.Distance(temp, Points[i].transform.localPosition) < eps / defaultScale * scaleSlider.value) return i;
         }
@@ -107,6 +109,10 @@ public class ARToPlaceObject : MonoBehaviour
         return pose;
     }
 
+    public bool SelectedTwoObject()
+    {
+        return selectedObject.Count == 2;
+    }
     public GameObject SpawnObject(GameObject oToSpawn, Vector3 pose, Quaternion A)
     {
         if (selectedObject.Count == 2)
@@ -117,7 +123,7 @@ public class ARToPlaceObject : MonoBehaviour
         {
             Transform toPlaceTransform = placementIndicator.transform;
             //pose = AddPointCoord(pose, toPlaceTransform);
-            if (SearchObject(pose)==-1)
+            if (SearchObject(pose) == -1)
             {
                 GameObject newObject = Instantiate(oToSpawn, pose, A, toPlaceTransform);
                 newObject.transform.localPosition = pose;
@@ -130,7 +136,7 @@ public class ARToPlaceObject : MonoBehaviour
                 newObject.GetComponent<MeshRenderer>().enabled = PointsEnabled;
                 TMPro1.text = "X: " + pose.x.ToString() + ", Y: " + pose.y.ToString() + ", Z: " + pose.z.ToString();
                 newObject.AddComponent<PointS>();
-                if(selectedObject.Count == 2)
+                if (selectedObject.Count == 2)
                 {
                     PointS ps = newObject.GetComponent<PointS>();
                     ps.setLineCoords(selectedObject[0], selectedObject[1]);
@@ -159,10 +165,6 @@ public class ARToPlaceObject : MonoBehaviour
 
     private void ClearPoints()
     {
-        foreach (var i in lines)
-        {
-            Destroy(i);
-        }
         foreach (var i in Points)
         {
             Destroy(i);
@@ -179,7 +181,7 @@ public class ARToPlaceObject : MonoBehaviour
 
     private void ClearSelectedObject(int x = 0)
     {
-        for (int i = 0; i < selectedObject.Count-x; i++)
+        for (int i = 0; i < selectedObject.Count - x; i++)
         {
             selectedObject[i].GetComponent<Renderer>().material.color = defaultColor;
         }
@@ -349,20 +351,10 @@ public class ARToPlaceObject : MonoBehaviour
 
     private void CreatePlane(GameObject A, GameObject B, GameObject C)
     {
-        if (selectedObject.Count != 3)
-            return;
-        //Plane myPlane = new Plane(selectedObject[0].transform.position, selectedObject[1].transform.position, selectedObject[2].transform.position);
-        //GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        //plane.transform.position = myPlane.distance * myPlane.normal;
-        //plane.transform.LookAt((myPlane.distance + 1) * myPlane.normal);
-        //plane.transform.SetParent(placementIndicator.transform);
-        //plane.transform.localScale= Vector3.one/100;
-        //planes.Add(plane);
-
-        // Получаем позиции точек
-        Vector3 pointA = A.transform.position;
-        Vector3 pointB = B.transform.position;
-        Vector3 pointC = C.transform.position;
+        // Получаем позиции и повороты точек
+        Vector3 pointA = A.transform.localPosition;
+        Vector3 pointB = B.transform.localPosition;
+        Vector3 pointC = C.transform.localPosition;
 
         // Создаем четырехугольную плоскость
         GameObject quadPlane = new GameObject("QuadPlane");
@@ -370,11 +362,14 @@ public class ARToPlaceObject : MonoBehaviour
         MeshRenderer meshRenderer = quadPlane.AddComponent<MeshRenderer>();
 
         // Создаем вершины четырехугольника
+        Vector3 temp = ((Vector3.Distance(pointA, pointC) > Vector3.Distance(pointB, pointC)) ? (pointA) : (pointB));
+        Vector3 temp2 = ((Vector3.Distance(pointA, pointC) > Vector3.Distance(pointB, pointC)) ? (pointB) : (pointA));
+        temp = ((Vector3.Distance(temp, temp2) < Vector3.Distance(-temp, temp2)) ? (-temp2 + temp) : (-temp + temp2));
         Vector3[] vertices = new Vector3[4];
         vertices[0] = pointA;
         vertices[1] = pointB;
         vertices[2] = pointC;
-        vertices[3] = (pointA + pointC) / 2f; // Четвертая вершина - среднее значение точек A и C
+        vertices[3] = pointC - temp; // Четвертая вершина - среднее значение точек A и C
 
         // Создаем треугольники
         int[] triangles = new int[6];
@@ -406,7 +401,25 @@ public class ARToPlaceObject : MonoBehaviour
         mesh.normals = normals;
         mesh.uv = uv;
         meshFilter.mesh = mesh;
+
+        // Создаем материал и применяем его к рендереру меша
+        Material material = new Material(Shader.Find("Standard"));
+        material.doubleSidedGI = true; // Делаем плоскость непрозрачной с обеих сторон
+        meshRenderer.material = material;
+
+        // Добавляем плоскость как дочерний объект placementIndicator.transform
+        quadPlane.transform.SetParent(placementIndicator.transform);
+
+        // Устанавливаем позицию и поворот плоскости
+        Vector3 center = (vertices[0] + vertices[1] + vertices[2] + vertices[3]) / 4f;
+        quadPlane.transform.localPosition = center;
+        quadPlane.transform.localScale = Vector3.one;
+        quadPlane.transform.rotation = placementIndicator.transform.rotation;
     }
+
+
+
+
 
     private Color defaultColor = Color.white;
     private Color selectColor = Color.red;
@@ -473,10 +486,14 @@ public class ARToPlaceObject : MonoBehaviour
     {
         float scale = scaleSlider.value;
         placementIndicator.transform.localScale = new Vector3(scale, scale, scale);
+        foreach(var i in lines)
+        {
+            i.GetComponent<Line>().lineWidth = 0.001f * scale;
+        }
     }
 
     private GameObject ReturnGameObject(ref GameObject temp, Vector3 V)
-    {        
+    {
         return SpawnObject(temp, V / 250, new Quaternion(0f, 0f, 0f, 0f));
     }
     //Стандартные фигуры
@@ -533,10 +550,10 @@ public class ARToPlaceObject : MonoBehaviour
         zCoord = !zCoord;
         xyzCoordsButtons[2].GetComponent<Image>().color = (zCoord) ? selectColor : defaultColor;
     }
-    Vector3 tempMove;
+    List<Vector3> tempMove=new List<Vector3>();
     private void MovePoint()
     {
-        if (selectedObject.Count == 0 || selectedObject.Count > 1)
+        if (selectedObject.Count == 0 || selectedObject.Count > 1 && maxSelectedObject!=-3)
             return;
         if (xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord) return;
         if (Input.touchCount == 1)
@@ -545,7 +562,8 @@ public class ARToPlaceObject : MonoBehaviour
             float x = 0, y = 0, z = 0;
             if (Input.GetTouch(0).phase == TouchPhase.Began)
             {
-                tempMove = selectedObject[0].transform.localPosition;
+                for (int i = 0; i < selectedObject.Count; i++)
+                    tempMove.Add(selectedObject[i].transform.localPosition);
                 beginTouch = touch.position;
             }
             else if (Input.GetTouch(0).phase == TouchPhase.Moved)
@@ -572,21 +590,32 @@ public class ARToPlaceObject : MonoBehaviour
                 else if (xCoord) x = (endTouch.x - beginTouch.x) / k;
                 else if (yCoord) y = (endTouch.y - beginTouch.y) / k;
                 else if (zCoord) z = (endTouch.x - beginTouch.x) / k;
-                if(selectedObject[0].GetComponent<PointS>().GetLines()) selectedObject[0].GetComponent<PointS>().Moved(tempMove, new Vector3(x, y, z));
-                else selectedObject[0].transform.localPosition=tempMove+new Vector3(x,y,z);
+                for (int i = 0; i < selectedObject.Count && i<tempMove.Count; i++)
+                    if (selectedObject[i].GetComponent<PointS>().GetLines()) selectedObject[i].GetComponent<PointS>().Moved(tempMove[i], new Vector3(x, y, z));
+                    else  selectedObject[i].transform.localPosition = tempMove[i] + new Vector3(x, y, z);
             }
+            else if (Input.GetTouch(0).phase == TouchPhase.Ended)
+                tempMove.Clear();
         }
     }
     private void CountSelectedObject()
     {
-        maxSelectedObject = (short)((maxSelectedObject) % 3 + 1);
-        MaxSelectedButton.GetComponentInChildren<TextMeshProUGUI>().text = "x" + maxSelectedObject.ToString();
+        if (maxSelectedObject != 3)
+        {
+            maxSelectedObject = (short)((maxSelectedObject) % 3 + 1);
+            MaxSelectedButton.GetComponentInChildren<TextMeshProUGUI>().text = "x" + maxSelectedObject.ToString();
+        }
+        else
+        {
+            maxSelectedObject = -3;
+            MaxSelectedButton.GetComponentInChildren<TextMeshProUGUI>().text = "xN";
+        }
         if (maxSelectedObject == 1)
             ClearSelectedObject(maxSelectedObject);
     }
     private void VisibleButton()
     {
-        bool aLPB = selectedObject.Count >= 2;
+        bool aLPB = selectedObject.Count >= 2 && maxSelectedObject!=-3;
         addLinePlaneButton.gameObject.SetActive(aLPB);
         addLinePlaneButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count <= 2) ? ("Add Line") : ("Add Plane");
         destroyPointButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count <= 1) ? ("Delete Point") : ("Clear select");
@@ -648,7 +677,7 @@ public class ARToPlaceObject : MonoBehaviour
         if (selectedObject.Count > 0)
         {
             TMPro1.text = "X: " + selectedObject[0].transform.localPosition.x.ToString() + ", Y: " + selectedObject[0].transform.localPosition.y.ToString() + ", Z: " + selectedObject[0].transform.localPosition.z.ToString();
-            if(selectedObject.Count>1)TMPro2.text = "X: " + selectedObject[1].transform.localPosition.x.ToString() + ", Y: " + selectedObject[1].transform.localPosition.y.ToString() + ", Z: " + selectedObject[1].transform.localPosition.z.ToString();
+            if (selectedObject.Count > 1) TMPro2.text = "X: " + selectedObject[1].transform.localPosition.x.ToString() + ", Y: " + selectedObject[1].transform.localPosition.y.ToString() + ", Z: " + selectedObject[1].transform.localPosition.z.ToString();
         }
         //TMPro2.text = "X: " + placementIndicator.transform.position.x.ToString() + ", Y: " + placementIndicator.transform.position.y.ToString() + ", Z: " + placementIndicator.transform.position.z.ToString();
         //TMPro1.text = "Rotation: " + placementIndicator.transform.eulerAngles.y.ToString();

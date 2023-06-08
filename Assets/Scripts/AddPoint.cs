@@ -80,15 +80,15 @@ public class AddPoint : MonoBehaviour
         bool bx = (sx.Length > 0 ? float.TryParse(sx, out x) : false);
         bool by = (sy.Length > 0 ? float.TryParse(sy, out y) : false);
         bool bz = (sz.Length > 0 ? float.TryParse(sz, out z) : false);
+        ARToPlaceObject arToPlaceObject = FindObjectOfType<ARToPlaceObject>();
 
-        if (bx && by && bz)
+        if (bx && by && bz || arToPlaceObject.SelectedTwoObject())
         {
             button.GetComponentInChildren<TextMeshProUGUI>().text = x.ToString() + ";" + y.ToString() + ";" + z.ToString();
             pose.x = x;
             pose.y = y;
             pose.z = z;
             objectToSpawn.tag = "Point";
-            ARToPlaceObject arToPlaceObject = FindObjectOfType<ARToPlaceObject>();
             if (arToPlaceObject != null)
             {
                 pose /= 50*5;
