@@ -21,6 +21,7 @@ using Color = UnityEngine.Color;
 using UnityEngine.XR.OpenXR.Input;
 using Unity.VisualScripting;
 using System.Linq;
+using UnityEngine.UI;
 
 public class ARToPlaceObject : MonoBehaviour
 {
@@ -42,6 +43,7 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public UnityEngine.UI.Slider scaleSlider;
     [SerializeField] public Button heightSliderButton;
     [SerializeField] public Button sizeSliderButton;
+    [SerializeField] public Dropdown FigureDropDown;
     private float eps = 0.001f;
 
     private AddPoint addPointClass;
@@ -85,27 +87,27 @@ public class ARToPlaceObject : MonoBehaviour
         return -1;
     }
 
-    private Vector3 AddPointCoord(Vector3 pose, Transform toPlaceTransform)
+    private Vector3 AddPointCoord(Vector3 pose, Vector3 center, float rotation)
     {
         //pose /= 50;
         //pose = pose / defaultScale * scaleSlider.value;
-        double rotation = -toPlaceTransform.eulerAngles.y;
+        //double rotation = -toPlaceTransform.eulerAngles.y;
         float x = 0;
         x += pose.x;
-        float x1 = toPlaceTransform.transform.position.x;
+        float x1 = center.x;
         float z = 0;
         z += pose.z;
-        float z1 = toPlaceTransform.transform.position.z;
+        float z1 = center.z;
         double r = Math.Sqrt(x * x + z * z);
         double t = Math.Atan2(z, x);
         double t2 = t + rotation / 180.0 * Math.PI;
-        double x2 = (double)x1 + r * Math.Cos(t2) * (toPlaceTransform.localScale.y / defaultScale);
-        double z2 = (double)z1 + r * Math.Sin(t2) * (toPlaceTransform.localScale.y / defaultScale);
+        double x2 = (double)x1 + r * Math.Cos(t2);
+        double z2 = (double)z1 + r * Math.Sin(t2);
         pose.x = (float)x2;
         //pose.x = x + x1;
         //pose.z = z + z1;
         pose.z = (float)z2;
-        pose.y = pose.y / defaultScale * scaleSlider.value + toPlaceTransform.transform.position.y;
+        pose.y = pose.y + center.y;
         return pose;
     }
 
@@ -335,16 +337,16 @@ public class ARToPlaceObject : MonoBehaviour
                     Destroy(x);
                     return true;
                 }
-            
+
         }
         return false;
     }
     private void CreateLine(GameObject selectedObject1 = null, GameObject selectedObject2 = null)
     {
-        if (selectedObject1 != null && selectedObject2 != null)
+        if (selectedObject1 != null && selectedObject2 != null && selectedObject1 != selectedObject2)
         {
-            if (!SearchLine(ref selectedObject1, ref selectedObject2)) 
-                if (RemoveLine(selectedObject1, selectedObject2)) 
+            if (!SearchLine(ref selectedObject1, ref selectedObject2))
+                if (RemoveLine(selectedObject1, selectedObject2))
                     return;
             GameObject lineObject = new GameObject("Line");
 
@@ -460,15 +462,15 @@ public class ARToPlaceObject : MonoBehaviour
         }
     }
 
-   
+
     private void TFMovePlace()
     {
         if (Input.GetTouch(0).phase == TouchPhase.Began)
             placementActive = true;
-        else if(Input.GetTouch(0).phase==TouchPhase.Ended) 
+        else if (Input.GetTouch(0).phase == TouchPhase.Ended)
             placementActive = false;
 
-            //TMPro3.text = "Move: " + ((placementActive) ? "on" : "off");
+        //TMPro3.text = "Move: " + ((placementActive) ? "on" : "off");
         //buttons[0].GetComponentInChildren<TextMeshProUGUI>().text = ((placementActive) ? ("Закрепить\nоси") : ("Передвинуть\nоси"));
     }
 
@@ -504,7 +506,7 @@ public class ARToPlaceObject : MonoBehaviour
     {
         float scale = scaleSlider.value;
         placementIndicator.transform.localScale = new Vector3(scale, scale, scale);
-        foreach(var i in lines)
+        foreach (var i in lines)
         {
             i.GetComponent<Line>().lineWidth = 0.001f * scale;
         }
@@ -548,7 +550,85 @@ public class ARToPlaceObject : MonoBehaviour
         CreateLine(A, A2); CreateLine(B, B2); CreateLine(C, C2); CreateLine(D, D2);
         CreateLine(A, B); CreateLine(B, C); CreateLine(C, D); CreateLine(D, A);
         CreateLine(A2, B2); CreateLine(B2, C2); CreateLine(C2, D2); CreateLine(D2, A2);
+    }
+    byte countPoint = 3;
+    float radiusFigure = 10;
+    float heightFigure = 7;
+    private void AddFigurePyramid()
+    {
+        if (objectToSpawn == null) return;
+        List<Vector3> vector3List = new List<Vector3>();
+        vector3List.Add(new Vector3((float)Math.Sqrt(radiusFigure), 0f, (float)Math.Sqrt(radiusFigure)));
+        //vector3List.Add(new Vector3(2f, 0f, 2f));
+        vector3List.Add(AddPointCoord(new Vector3(-vector3List[0].x, vector3List[0].y, -vector3List[0].z),
+                vector3List[0], 0));
+        for (byte i = 2; i < countPoint + 1; i++)
+        {
+            vector3List.Add(AddPointCoord(new Vector3(-vector3List[0].x, vector3List[0].y, -vector3List[0].z),
+                vector3List[0], 360 * (i - 1) / (float)countPoint));
+        }
+        if (vector3List.Count > 0)
+        {
+            Vector3 temp = vector3List[0];
+            temp.y = heightFigure;
+            vector3List[0] = temp;
+        }
+        List<GameObject> gameObjectList = new List<GameObject>();
+        for (byte i = 0; i < vector3List.Count; i++)
+        {
+            gameObjectList.Add(ReturnGameObject(ref objectToSpawn, vector3List[i]));
+            Points.Add(gameObjectList[i]);
+            if (i >= 1)
+            {
+                CreateLine(gameObjectList[i - 1], gameObjectList[i]);
+                if (i >= 2)
+                {
+                    CreateLine(gameObjectList[0], gameObjectList[i]);
+                }
+            }
+        }
+        if (gameObjectList.Count >= 2) CreateLine(gameObjectList[1], gameObjectList[gameObjectList.Count - 1]);
 
+    }
+
+    private void AddFigureCylinder()
+    {
+        if (objectToSpawn == null) return;
+        List<Vector3> vector3List = new List<Vector3>();
+        Vector3 centre = new Vector3((float)Math.Sqrt(radiusFigure), 0f, (float)Math.Sqrt(radiusFigure));
+        //vector3List.Add(new Vector3(2f, 0f, 2f));
+        for (byte i = 0; i < countPoint; i++)
+        {
+            vector3List.Add(AddPointCoord(new Vector3(-centre.x, centre.y, -centre.z),
+                centre, 360 * (i) / (float)countPoint));
+            vector3List.Add(AddPointCoord(new Vector3(-centre.x, centre.y + heightFigure, -centre.z),
+                centre, 360 * (i) / (float)countPoint));
+        }
+
+        List<GameObject> gameObjectList = new List<GameObject>();
+        for (byte i = 1; i < vector3List.Count; i += 2)
+        {
+            gameObjectList.Add(ReturnGameObject(ref objectToSpawn, vector3List[i - 1]));
+            gameObjectList.Add(ReturnGameObject(ref objectToSpawn, vector3List[i]));
+            Points.Add(gameObjectList[i - 1]);
+            Points.Add(gameObjectList[i]);
+            CreateLine(gameObjectList[i - 1], gameObjectList[i]);
+            if (i >= 2)
+            {
+                CreateLine(gameObjectList[i - 2], gameObjectList[i]);
+                CreateLine(gameObjectList[i - 3], gameObjectList[i - 1]);
+            }
+        }
+        if (gameObjectList.Count >= 4)
+        {
+            CreateLine(gameObjectList[0], gameObjectList[gameObjectList.Count - 2]);
+            CreateLine(gameObjectList[1], gameObjectList[gameObjectList.Count - 1]);
+        }
+    }
+
+    private void AddFigure()
+    {
+        AddFigureCylinder();
     }
 
     Vector2 beginTouch, endTouch;
@@ -568,10 +648,10 @@ public class ARToPlaceObject : MonoBehaviour
         zCoord = !zCoord;
         xyzCoordsButtons[2].GetComponent<Image>().color = (zCoord) ? selectColor : defaultColor;
     }
-    List<Vector3> tempMove=new List<Vector3>();
+    List<Vector3> tempMove = new List<Vector3>();
     private void MovePoint()
     {
-        if (selectedObject.Count == 0 || selectedObject.Count > 1 && maxSelectedObject!=-3)
+        if (selectedObject.Count == 0 || selectedObject.Count > 1 && maxSelectedObject != -3)
             return;
         if (xCoord && yCoord && zCoord || !xCoord && !yCoord && !zCoord) return;
         if (Input.touchCount == 1)
@@ -608,9 +688,9 @@ public class ARToPlaceObject : MonoBehaviour
                 else if (xCoord) x = (endTouch.x - beginTouch.x) / k;
                 else if (yCoord) y = (endTouch.y - beginTouch.y) / k;
                 else if (zCoord) z = (endTouch.x - beginTouch.x) / k;
-                for (int i = 0; i < selectedObject.Count && i<tempMove.Count; i++)
+                for (int i = 0; i < selectedObject.Count && i < tempMove.Count; i++)
                     if (selectedObject[i].GetComponent<PointS>().GetLines()) selectedObject[i].GetComponent<PointS>().Moved(tempMove[i], new Vector3(x, y, z));
-                    else  selectedObject[i].transform.localPosition = tempMove[i] + new Vector3(x, y, z);
+                    else selectedObject[i].transform.localPosition = tempMove[i] + new Vector3(x, y, z);
             }
             else if (Input.GetTouch(0).phase == TouchPhase.Ended)
                 tempMove.Clear();
@@ -633,7 +713,7 @@ public class ARToPlaceObject : MonoBehaviour
     }
     private void VisibleButton()
     {
-        bool aLPB = selectedObject.Count >= 2 && maxSelectedObject!=-3;
+        bool aLPB = selectedObject.Count >= 2 && maxSelectedObject != -3;
         addLinePlaneButton.gameObject.SetActive(aLPB);
         addLinePlaneButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count <= 2) ? ("Add Line") : ("Add Plane");
         destroyPointButton.GetComponentInChildren<TextMeshProUGUI>().text = (selectedObject.Count <= 1) ? ("Delete Point") : ("Clear select");
@@ -664,7 +744,7 @@ public class ARToPlaceObject : MonoBehaviour
         addLinePlaneButton.onClick.AddListener(CreateLinePlane);
         heightSliderButton.onClick.AddListener(UpYDefault);
         sizeSliderButton.onClick.AddListener(ScaleSliderObjectDefault);
-        addObjectButtons[0].onClick.AddListener(AddFigureSquare);
+        addObjectButtons[0].onClick.AddListener(AddFigure);
         xyzCoordsButtons[0].onClick.AddListener(XCoordsEnabled);
         xyzCoordsButtons[1].onClick.AddListener(YCoordsEnabled);
         xyzCoordsButtons[2].onClick.AddListener(ZCoordsEnabled);
