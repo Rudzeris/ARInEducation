@@ -22,6 +22,7 @@ using UnityEngine.XR.OpenXR.Input;
 using Unity.VisualScripting;
 using System.Linq;
 using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 public class ARToPlaceObject : MonoBehaviour
 {
@@ -30,6 +31,8 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public GameObject placementIndicator;
     [SerializeField] public GameObject[] vectorList;
     [SerializeField] public GameObject[] Text;
+    [SerializeField] public TextMeshProUGUI[] HLN;
+    [SerializeField] public TextMeshProUGUI[] HLNText;
     [SerializeField] public GameObject objectToSpawn;
     [SerializeField] public Button deletePointsButton;
     [SerializeField] public Button destroyPointButton;
@@ -43,7 +46,8 @@ public class ARToPlaceObject : MonoBehaviour
     [SerializeField] public UnityEngine.UI.Slider scaleSlider;
     [SerializeField] public Button heightSliderButton;
     [SerializeField] public Button sizeSliderButton;
-    [SerializeField] public Dropdown FigureDropDown;
+    [SerializeField] public TMPro.TMP_Dropdown FigureDropDown;
+
     private float eps = 0.001f;
 
     private AddPoint addPointClass;
@@ -520,10 +524,27 @@ public class ARToPlaceObject : MonoBehaviour
     private void AddFigureSquare()
     {
         if (objectToSpawn == null) return;
-        float weight = 3, length = 5;
+
+        string sx, sy, sz;
+        sx = HLN[0].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sy = HLN[1].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sz = HLN[2].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sx = sx.Substring(0, sx.Length - 1);
+        sy = sy.Substring(0, sy.Length - 1);
+        sz = sz.Substring(0, sz.Length - 1);
+        float x = 0;
+        float y = 0;
+        float z = 0;
+        bool bx = (sx.Length > 0 ? float.TryParse(sx, out x) : false);
+        bool by = (sy.Length > 0 ? float.TryParse(sy, out y) : false);
+        bool bz = (sz.Length > 0 ? float.TryParse(sz, out z) : false);
+
+        if (!bx || !by || !bz) return;
+        float weight = y;
+        float length = x;
+        float h = z;
         Vector3 begin = new Vector3(0f, 0f, 0f);
         Vector3 a, a2, b, b2, c, c2, d, d2;
-        float h = 0;
         a = new Vector3(begin.x, h + begin.y, begin.z);
         b = new Vector3(begin.x + weight, h + begin.y, begin.z);
         c = new Vector3(begin.x + weight, h + begin.y, begin.z + length);
@@ -551,12 +572,31 @@ public class ARToPlaceObject : MonoBehaviour
         CreateLine(A, B); CreateLine(B, C); CreateLine(C, D); CreateLine(D, A);
         CreateLine(A2, B2); CreateLine(B2, C2); CreateLine(C2, D2); CreateLine(D2, A2);
     }
-    byte countPoint = 3;
-    float radiusFigure = 10;
-    float heightFigure = 7;
+    
     private void AddFigurePyramid()
     {
         if (objectToSpawn == null) return;
+
+        string sx, sy, sz;
+        sx = HLN[0].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sy = HLN[1].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sz = HLN[2].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sx = sx.Substring(0, sx.Length - 1);
+        sy = sy.Substring(0, sy.Length - 1);
+        sz = sz.Substring(0, sz.Length - 1);
+        float x = 0;
+        float y = 0;
+        float z = 0;
+        bool bx = (sx.Length > 0 ? float.TryParse(sx, out x) : false);
+        bool by = (sy.Length > 0 ? float.TryParse(sy, out y) : false);
+        bool bz = (sz.Length > 0 ? float.TryParse(sz, out z) : false);
+
+        if (!bx || !by || !bz) return;
+
+        byte countPoint = (byte)x;
+        float radiusFigure = y;
+        float heightFigure = z;
+
         List<Vector3> vector3List = new List<Vector3>();
         vector3List.Add(new Vector3((float)Math.Sqrt(radiusFigure), 0f, (float)Math.Sqrt(radiusFigure)));
         //vector3List.Add(new Vector3(2f, 0f, 2f));
@@ -594,6 +634,27 @@ public class ARToPlaceObject : MonoBehaviour
     private void AddFigureCylinder()
     {
         if (objectToSpawn == null) return;
+
+        string sx, sy, sz;
+        sx = HLN[0].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sy = HLN[1].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sz = HLN[2].GetComponentInChildren<TextMeshProUGUI>().text.ToString();
+        sx = sx.Substring(0, sx.Length - 1);
+        sy = sy.Substring(0, sy.Length - 1);
+        sz = sz.Substring(0, sz.Length - 1);
+        float x = 0;
+        float y = 0;
+        float z = 0;
+        bool bx = (sx.Length > 0 ? float.TryParse(sx, out x) : false);
+        bool by = (sy.Length > 0 ? float.TryParse(sy, out y) : false);
+        bool bz = (sz.Length > 0 ? float.TryParse(sz, out z) : false);
+
+        if (!bx || !by || !bz) return;
+
+        byte countPoint = (byte)x;
+        float radiusFigure = y;
+        float heightFigure = z;
+
         List<Vector3> vector3List = new List<Vector3>();
         Vector3 centre = new Vector3((float)Math.Sqrt(radiusFigure), 0f, (float)Math.Sqrt(radiusFigure));
         //vector3List.Add(new Vector3(2f, 0f, 2f));
@@ -628,7 +689,19 @@ public class ARToPlaceObject : MonoBehaviour
 
     private void AddFigure()
     {
-        AddFigureCylinder();
+        switch (FigureDropDown.value)
+        {
+            case 0:
+                AddFigureSquare();
+                break;
+            case 1:
+                AddFigurePyramid();
+                break;
+            case 2:
+                AddFigureCylinder();
+                break;
+        }
+        
     }
 
     Vector2 beginTouch, endTouch;
@@ -711,7 +784,7 @@ public class ARToPlaceObject : MonoBehaviour
         if (maxSelectedObject == 1)
             ClearSelectedObject(maxSelectedObject);
     }
-    private void VisibleButton()
+    private void DefailtObjects()
     {
         bool aLPB = selectedObject.Count >= 2 && maxSelectedObject != -3;
         addLinePlaneButton.gameObject.SetActive(aLPB);
@@ -720,6 +793,13 @@ public class ARToPlaceObject : MonoBehaviour
         destroyPointButton.gameObject.SetActive(selectedObject.Count >= 1);
 
         deletePointsButton.gameObject.SetActive(Points.Count > 0);
+
+        if (HLNText.Length == 3)
+        {
+            HLNText[0].GetComponentInChildren<TextMeshProUGUI>().text = (FigureDropDown.value==0)?("Length"):("Points");
+            HLNText[1].GetComponentInChildren<TextMeshProUGUI>().text = (FigureDropDown.value == 0) ? ("Width") : ("Radius");
+            //HLN[2].GetComponentInChildren<TextMeshProUGUI>().text = "Height";
+        }
     }
 
     private void EmptyF()
@@ -759,12 +839,14 @@ public class ARToPlaceObject : MonoBehaviour
             i.GetComponent<Image>().color = (xCoord) ? selectColor : defaultColor;
         MaxSelectedButton.GetComponentInChildren<TextMeshProUGUI>().text = "x" + maxSelectedObject.ToString();
         telephone = SystemInfo.deviceType == DeviceType.Handheld; // Определяет устройство
+
     }
     // Update is called once per frame
     void Update()
     {
+        //FigureDropDown.value = dDown.value;
         if (telephone) UpdatePlacementPose();
-        VisibleButton();
+        DefailtObjects();
         RotateAndMovePlace();
         MovePoint();
         //if (Input.touchCount == 1 && Input.GetTouch(0).phase == TouchPhase.Began)
